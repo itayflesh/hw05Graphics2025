@@ -5,7 +5,7 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+document.getElementById('canvas-container').appendChild(renderer.domElement);
 // Set background color
 scene.background = new THREE.Color(0x000000);
 

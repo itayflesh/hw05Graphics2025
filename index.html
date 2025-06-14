@@ -1,15 +1,181 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<title>HW5</title>
-		<style>
-			body { margin: 0; }
-		</style>
-		<script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
-	</head>
-	<body>
-		<script src="src/hw5.js" type="module"></script>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Basketball Court - HW5</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-	</body>
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+        }
+
+        /* Canvas Container */
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* UI Overlay System */
+        .ui-overlay {
+            position: absolute;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .ui-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 165, 0, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            font-size: 14px;
+            line-height: 1.4;
+            pointer-events: auto;
+        }
+
+        /* Score Display - Top Center */
+        #score-display {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 300px;
+            text-align: center;
+        }
+
+        #score-display h2 {
+            color: #ff6600;
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .team-score {
+            flex: 1;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .score-separator {
+            font-size: 20px;
+            color: #ff6600;
+        }
+
+        /* Controls Display - Bottom Left */
+        #controls-display {
+            bottom: 20px;
+            left: 20px;
+            min-width: 250px;
+        }
+
+        #controls-display h3 {
+            color: #ff6600;
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .control-group {
+            margin-bottom: 8px;
+        }
+
+        .control-key {
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid #ff6600;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #ff6600;
+        }
+
+        .control-description {
+            margin-left: 8px;
+            color: #ccc;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .ui-panel {
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            #score-display {
+                min-width: 250px;
+            }
+            
+            .score-board {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
+</head>
+<body>
+    <!-- Canvas Container -->
+    <div id="canvas-container">
+        <!-- THREE.js canvas will be inserted here -->
+    </div>
+
+    <!-- UI Overlay System -->
+    
+    <!-- Score Display (Top Center) -->
+    <div id="score-display" class="ui-overlay ui-panel">
+        <h2>🏀 Basketball Court</h2>
+        <div class="score-board">
+            <div class="team-score">
+                <div>Team A</div>
+                <div id="team-a-score">0</div>
+            </div>
+            <div class="score-separator">:</div>
+            <div class="team-score">
+                <div>Team B</div>
+                <div id="team-b-score">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls Display (Bottom Left) -->
+    <div id="controls-display" class="ui-overlay ui-panel">
+        <h3>🎮 Controls</h3>
+        
+        <div class="control-group">
+            <span class="control-key">O</span>
+            <span class="control-description">Toggle orbit camera</span>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-key">Mouse</span>
+            <span class="control-description">Orbit around court</span>
+        </div>
+        
+        <div class="control-group">
+            <span class="control-key">Wheel</span>
+            <span class="control-description">Zoom in/out</span>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="src/hw5.js" type="module"></script>
+</body>
 </html>
