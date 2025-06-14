@@ -83,7 +83,7 @@
         #controls-display {
             bottom: 20px;
             left: 20px;
-            min-width: 250px;
+            min-width: 300px;
         }
 
         #controls-display h3 {
@@ -93,8 +93,22 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
 
+        .control-section {
+            margin-bottom: 12px;
+        }
+
+        .control-section-title {
+            color: #ffcc66;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .control-group {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            margin-left: 8px;
         }
 
         .control-key {
@@ -105,11 +119,28 @@
             font-family: monospace;
             font-weight: bold;
             color: #ff6600;
+            min-width: 45px;
+            display: inline-block;
+            text-align: center;
         }
 
         .control-description {
             margin-left: 8px;
             color: #ccc;
+        }
+
+        .control-disabled {
+            opacity: 0.5;
+        }
+
+        .control-disabled .control-key {
+            background: rgba(100, 100, 100, 0.2);
+            border-color: #666;
+            color: #666;
+        }
+
+        .control-disabled .control-description {
+            color: #666;
         }
 
         /* Responsive Design */
@@ -126,6 +157,10 @@
             .score-board {
                 flex-direction: column;
                 gap: 10px;
+            }
+
+            #controls-display {
+                min-width: 250px;
             }
         }
     </style>
@@ -159,19 +194,63 @@
     <div id="controls-display" class="ui-overlay ui-panel">
         <h3>🎮 Controls</h3>
         
-        <div class="control-group">
-            <span class="control-key">O</span>
-            <span class="control-description">Toggle orbit camera</span>
+        <!-- Camera Controls Section -->
+        <div class="control-section">
+            <div class="control-section-title">Camera</div>
+            <div class="control-group">
+                <span class="control-key">O</span>
+                <span class="control-description">Toggle orbit camera</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Mouse</span>
+                <span class="control-description">Orbit around court</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Wheel</span>
+                <span class="control-description">Zoom in/out</span>
+            </div>
         </div>
-        
-        <div class="control-group">
-            <span class="control-key">Mouse</span>
-            <span class="control-description">Orbit around court</span>
+
+        <!-- Basketball Movement Section (HW6) -->
+        <div class="control-section control-disabled">
+            <div class="control-section-title">Basketball Movement</div>
+            <div class="control-group">
+                <span class="control-key">↑</span>
+                <span class="control-description">Move ball forward</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">↓</span>
+                <span class="control-description">Move ball backward</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">←</span>
+                <span class="control-description">Move ball left</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">→</span>
+                <span class="control-description">Move ball right</span>
+            </div>
         </div>
-        
-        <div class="control-group">
-            <span class="control-key">Wheel</span>
-            <span class="control-description">Zoom in/out</span>
+
+        <!-- Basketball Actions Section (HW6) -->
+        <div class="control-section control-disabled">
+            <div class="control-section-title">Basketball Actions</div>
+            <div class="control-group">
+                <span class="control-key">W</span>
+                <span class="control-description">Dribble faster</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">S</span>
+                <span class="control-description">Dribble slower</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">Space</span>
+                <span class="control-description">Shoot basketball</span>
+            </div>
+            <div class="control-group">
+                <span class="control-key">R</span>
+                <span class="control-description">Reset ball position</span>
+            </div>
         </div>
     </div>
 
