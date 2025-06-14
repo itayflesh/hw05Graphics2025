@@ -40,10 +40,155 @@ function createBasketballCourt() {
   
   // Note: All court lines, hoops, and other elements have been removed
   // Students will need to implement these features
+
+  // White line material for all court markings
+  const courtLinesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  
+  // Center line running down the middle of the court
+  const centerLineGeometry = new THREE.BoxGeometry(0.2, 0, 15); // 0.1
+  const centerLineMesh = new THREE.Mesh(centerLineGeometry, courtLinesMaterial);
+  centerLineMesh.position.y = 0.15;
+  scene.add(centerLineMesh);
+  
+  // Center circle at court center (bigger size as requested)
+  const centerCircleGeometry = new THREE.RingGeometry(2, 2.2, 32);
+  const centerCircleMesh = new THREE.Mesh(centerCircleGeometry, courtLinesMaterial);
+  centerCircleMesh.rotation.x = degrees_to_radians(-90);
+  centerCircleMesh.position.y = 0.15;
+  scene.add(centerCircleMesh);
+  
+  // Left side three-point line (positioned at the LEFT END of court)
+  const leftThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
+  const leftThreePointMesh = new THREE.Mesh(leftThreePointGeometry, courtLinesMaterial);
+  leftThreePointMesh.rotation.x = degrees_to_radians(-90);
+  leftThreePointMesh.rotation.z = degrees_to_radians(-90); // Rotate to face the correct direction
+  leftThreePointMesh.position.set(-15, 0.15, 0); // Move closer to the end of court
+  scene.add(leftThreePointMesh);
+  
+  // Right side three-point line (positioned at the RIGHT END of court)
+  const rightThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
+  const rightThreePointMesh = new THREE.Mesh(rightThreePointGeometry, courtLinesMaterial);
+  rightThreePointMesh.rotation.x = degrees_to_radians(-90);
+  rightThreePointMesh.rotation.z = degrees_to_radians(90); // Rotate to face the correct direction
+  rightThreePointMesh.position.set(15, 0.15, 0); // Move closer to the end of court
+  scene.add(rightThreePointMesh);
+
+}
+
+function createBasketballHoop(hoopPositionX) {
+  // Group all hoop components together
+  const basketballHoopGroup = new THREE.Group();
+  
+  // Support pole behind the backboard
+  const supportPoleGeometry = new THREE.CylinderGeometry(0.15, 0.15, 6);
+  const supportPoleMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+  const supportPoleMesh = new THREE.Mesh(supportPoleGeometry, supportPoleMaterial);
+  supportPoleMesh.position.set(hoopPositionX, 3, 0); // Behind the court, 6 units tall (3 is center height)
+  supportPoleMesh.castShadow = true;
+  basketballHoopGroup.add(supportPoleMesh);
+
+  // Support arm connecting pole to backboard
+  const supportArmGeometry = new THREE.BoxGeometry(0.2, 0.15, 1);
+  const supportArmMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+  const supportArmMesh = new THREE.Mesh(supportArmGeometry, supportArmMaterial);
+  
+  // Position and rotate arm based on which side of court
+  if (hoopPositionX < 0) {
+    // Left hoop - arm points toward positive X (center)
+    supportArmMesh.position.set(hoopPositionX + 0.5, 5, 0);
+    supportArmMesh.rotation.y = degrees_to_radians(90);
+  } else {
+    // Right hoop - arm points toward negative X (center)
+    supportArmMesh.position.set(hoopPositionX - 0.5, 5, 0);
+    supportArmMesh.rotation.y = degrees_to_radians(-90);
+  }
+  
+  supportArmMesh.castShadow = true;
+  basketballHoopGroup.add(supportArmMesh);
+
+  // Backboard (white and partially transparent)
+  const backboardGeometry = new THREE.BoxGeometry(2.8, 1.6, 0.1);
+  const backboardMaterial = new THREE.MeshPhongMaterial({ 
+    color: 0xffffff, 
+    transparent: true, 
+    opacity: 0.8 
+  });
+  const backboardMesh = new THREE.Mesh(backboardGeometry, backboardMaterial);
+
+  // Position and rotate backboard based on which side of court
+  if (hoopPositionX < 0) {
+    // Left backboard faces toward positive X (center)
+    backboardMesh.position.set(hoopPositionX + 1, 5, 0);
+    backboardMesh.rotation.y = degrees_to_radians(90); // Rotate to face center
+  } else {
+    // Right backboard faces toward negative X (center)
+    backboardMesh.position.set(hoopPositionX - 1, 5, 0);
+    backboardMesh.rotation.y = degrees_to_radians(-90); // Rotate to face center
+  }
+
+  backboardMesh.castShadow = true;
+  backboardMesh.receiveShadow = true;
+  basketballHoopGroup.add(backboardMesh);
+  
+  scene.add(basketballHoopGroup);
+
+  // Basketball rim (orange color at regulation height) - 3D version
+  const basketballRimGeometry = new THREE.TorusGeometry(0.23, 0.02, 8, 16);
+  const basketballRimMaterial = new THREE.MeshPhongMaterial({ color: 0xff6600 });
+  const basketballRimMesh = new THREE.Mesh(basketballRimGeometry, basketballRimMaterial);
+
+  // Position rim in front of backboard, facing upward
+  basketballRimMesh.rotation.x = degrees_to_radians(-90); // Make it horizontal
+
+  if (hoopPositionX < 0) {
+    // Left rim - positioned in front of left backboard
+    basketballRimMesh.position.set(hoopPositionX + 1.3, 4.5, 0);
+  } else {
+    // Right rim - positioned in front of right backboard  
+    basketballRimMesh.position.set(hoopPositionX - 1.3, 4.5, 0);
+  }
+
+  basketballRimMesh.castShadow = true;
+  basketballHoopGroup.add(basketballRimMesh);
+
+  // Basketball net using line segments (minimum 8 segments as required)
+  const basketballNetGroup = new THREE.Group();
+  const numberOfNetSegments = 8;
+  const netLineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+
+  for (let segmentIndex = 0; segmentIndex < numberOfNetSegments; segmentIndex++) {
+    const segmentAngle = (segmentIndex / numberOfNetSegments) * Math.PI * 2;
+    const rimTopX = Math.cos(segmentAngle) * 0.23;
+    const rimTopZ = Math.sin(segmentAngle) * 0.23;
+    const netBottomX = Math.cos(segmentAngle) * 0.15;
+    const netBottomZ = Math.sin(segmentAngle) * 0.15;
+    
+    // Create line segment from rim to bottom of net
+    const netSegmentPoints = [
+      new THREE.Vector3(rimTopX, 0, rimTopZ),
+      new THREE.Vector3(netBottomX, -0.4, netBottomZ)
+    ];
+    
+    const netSegmentGeometry = new THREE.BufferGeometry().setFromPoints(netSegmentPoints);
+    const netSegmentLine = new THREE.Line(netSegmentGeometry, netLineMaterial);
+    basketballNetGroup.add(netSegmentLine);
+  }
+
+  // Position the entire net group under the rim
+  if (hoopPositionX < 0) {
+    basketballNetGroup.position.set(hoopPositionX + 1.3, 4.5, 0);
+  } else {
+    basketballNetGroup.position.set(hoopPositionX - 1.3, 4.5, 0);
+  }
+
+  basketballHoopGroup.add(basketballNetGroup);
+
 }
 
 // Create all elements
 createBasketballCourt();
+createBasketballHoop(-15);  // Left hoop (matching three-point line position)
+createBasketballHoop(15);   // Right hoop (matching three-point line position)
 
 // Set camera position for better view
 const cameraTranslate = new THREE.Matrix4();
