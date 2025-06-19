@@ -1,146 +1,147 @@
 import {OrbitControls} from './OrbitControls.js'
 
+// Initialize the basic THREE.js scene components
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
+// Create and configure the WebGL renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
-// Set background color
+
+// Set a black background for the scene
 scene.background = new THREE.Color(0x000000);
 
-// Add lights to the scene
+// Add ambient lighting for overall scene illumination
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
+// Add directional light for shadows and depth
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 20, 15);
 scene.add(directionalLight);
 
-// Enable shadows
+// Enable shadow mapping for realistic lighting
 renderer.shadowMap.enabled = true;
 directionalLight.castShadow = true;
 
+// Helper function to convert degrees to radians
 function degreesToRadians(degrees) {
   var pi = Math.PI;
   return degrees * (pi/180);
 }
 
-// Create basketball court with texture
+// Create the main basketball court with court markings
 function createBasketballCourt() {
-  // Create texture loader
   const textureLoader = new THREE.TextureLoader();
   
-  // Court floor with basketball court texture
+  // Create the main court floor geometry
   const courtGeometry = new THREE.BoxGeometry(30, 0.2, 15);
   
-  // Load the basketball court wood texture
+  // Load basketball court wood texture with proper handling
   const courtTexture = textureLoader.load(
     './src/textures/basketball_court_wood.jpg',  
     
-    // Success callback
+    // Texture loaded successfully
     function(texture) {
       console.log('Basketball court texture loaded successfully');
 
-      // Rotate texture 90 degrees to fix orientation 
-      texture.rotation = Math.PI / 2;  // Rotate 90 degrees
-      texture.center.set(0.5, 0.5);    // Set rotation center to middle of texture
+      // Rotate texture to match court orientation 
+      texture.rotation = Math.PI / 2;
+      texture.center.set(0.5, 0.5);
       
-      // Adjust texture properties for better appearance
+      // Set texture wrapping for seamless appearance
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      
     },
     
-    // Progress callback
+    // Loading progress callback
     function(progress) {
       console.log('Loading court texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
     },
     
-    // Error callback - fallback to brown color if texture fails
+    // Error handling - fallback to solid brown color
     function(error) {
       console.error('Failed to load basketball court texture:', error);
       console.log('Using fallback brown material');
       
-      // Fallback to simple brown material
+      // Use solid brown material if texture fails to load
       court.material = new THREE.MeshPhongMaterial({ 
-        color: 0xc68642,  // Brown wood color
+        color: 0xc68642,
         shininess: 50
       });
     }
   );
   
-  // Court material with texture
+  // Create court material using the loaded texture
   const courtMaterial = new THREE.MeshPhongMaterial({ 
     map: courtTexture,
-    shininess: 30  // Adjust shininess for realistic wood appearance
+    shininess: 30
   });
   
+  // Create and position the court mesh
   const court = new THREE.Mesh(courtGeometry, courtMaterial);
   court.receiveShadow = true;
   scene.add(court);
   
-  // Note: All court lines, hoops, and other elements have been removed
-  // Students will need to implement these features
-  
-  // White line material for all court markings
+  // Create white material for all court line markings
   const courtLinesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
   
-  // Center line running down the middle of the court
-  const centerLineGeometry = new THREE.BoxGeometry(0.2, 0.01, 15); // Fixed height to 0.01
+  // Center line dividing the court in half
+  const centerLineGeometry = new THREE.BoxGeometry(0.2, 0.01, 15);
   const centerLineMesh = new THREE.Mesh(centerLineGeometry, courtLinesMaterial);
-  centerLineMesh.position.y = 0.11;
+  centerLineMesh.position.y = 0.11; // Slightly above court surface
   scene.add(centerLineMesh);
   
-  // Center circle at court center (bigger size as requested)
+  // Center circle at mid-court
   const centerCircleGeometry = new THREE.RingGeometry(2, 2.2, 32);
   const centerCircleMesh = new THREE.Mesh(centerCircleGeometry, courtLinesMaterial);
-  centerCircleMesh.rotation.x = degreesToRadians(-90);
+  centerCircleMesh.rotation.x = degreesToRadians(-90); // Lay flat on court
   centerCircleMesh.position.y = 0.11;
   scene.add(centerCircleMesh);
   
-  // Left side three-point line (positioned at the LEFT END of court)
+  // Three-point line for left side of court
   const leftThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
   const leftThreePointMesh = new THREE.Mesh(leftThreePointGeometry, courtLinesMaterial);
   leftThreePointMesh.rotation.x = degreesToRadians(-90);
-  leftThreePointMesh.rotation.z = degreesToRadians(-90); // Rotate to face the correct direction
-  leftThreePointMesh.position.set(-15, 0.11, 0); // Move closer to the end of court
+  leftThreePointMesh.rotation.z = degreesToRadians(-90); // Orient toward left hoop
+  leftThreePointMesh.position.set(-15, 0.11, 0);
   scene.add(leftThreePointMesh);
   
-  // Right side three-point line (positioned at the RIGHT END of court)
+  // Three-point line for right side of court
   const rightThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
   const rightThreePointMesh = new THREE.Mesh(rightThreePointGeometry, courtLinesMaterial);
   rightThreePointMesh.rotation.x = degreesToRadians(-90);
-  rightThreePointMesh.rotation.z = degreesToRadians(90); // Rotate to face the correct direction
-  rightThreePointMesh.position.set(15, 0.11, 0); // Move closer to the end of court
+  rightThreePointMesh.rotation.z = degreesToRadians(90); // Orient toward right hoop
+  rightThreePointMesh.position.set(15, 0.11, 0);
   scene.add(rightThreePointMesh);
 }
 
-
+// Create a complete basketball hoop assembly at the specified x position
 function createBasketballHoop(hoopPositionX) {
-  // Group all hoop components together
+  // Group all hoop components together for easier management
   const basketballHoopGroup = new THREE.Group();
   
-  // Support pole behind the backboard
+  // Create the main support pole
   const supportPoleGeometry = new THREE.CylinderGeometry(0.15, 0.15, 6);
   const supportPoleMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
   const supportPoleMesh = new THREE.Mesh(supportPoleGeometry, supportPoleMaterial);
-  supportPoleMesh.position.set(hoopPositionX, 3, 0); // Behind the court, 6 units tall (3 is center height)
+  supportPoleMesh.position.set(hoopPositionX, 3, 0); // Position behind backboard
   supportPoleMesh.castShadow = true;
   basketballHoopGroup.add(supportPoleMesh);
 
-  // Support arm connecting pole to backboard
+  // Create the support arm connecting pole to backboard
   const supportArmGeometry = new THREE.BoxGeometry(0.2, 0.15, 1);
   const supportArmMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
   const supportArmMesh = new THREE.Mesh(supportArmGeometry, supportArmMaterial);
   
-  // Position and rotate arm based on which side of court
+  // Position arm based on which side of the court we're on
   if (hoopPositionX < 0) {
-    // Left hoop - arm points toward positive X (center)
+    // Left side hoop - arm extends toward center court
     supportArmMesh.position.set(hoopPositionX + 0.5, 5, 0);
     supportArmMesh.rotation.y = degreesToRadians(90);
   } else {
-    // Right hoop - arm points toward negative X (center)
+    // Right side hoop - arm extends toward center court
     supportArmMesh.position.set(hoopPositionX - 0.5, 5, 0);
     supportArmMesh.rotation.y = degreesToRadians(-90);
   }
@@ -148,75 +149,68 @@ function createBasketballHoop(hoopPositionX) {
   supportArmMesh.castShadow = true;
   basketballHoopGroup.add(supportArmMesh);
 
-  // CREATE TEXTURE LOADER FOR BACKBOARD
+  // Set up texture loader for backboard graphics
   const textureLoader = new THREE.TextureLoader();
   
-  // BACKBOARD GEOMETRY
+  // Create backboard geometry
   const backboardGeometry = new THREE.BoxGeometry(2.8, 1.6, 0.1);
   
-  // LOAD THE BASKETBALL BACKBOARD TEXTURE
+  // Load the basketball backboard texture
   const backboardTexture = textureLoader.load(
     './src/textures/Basketball_Backboard.jpg',
     
-    // Success callback
+    // Texture loaded successfully
     function(texture) {
       console.log('Basketball backboard texture loaded successfully');
       
-      // Optional: Adjust texture properties for better appearance
+      // Set texture wrapping to prevent tiling
       texture.wrapS = THREE.ClampToEdgeWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
-      
-      // Uncomment and modify if the texture appears rotated or flipped
-      // texture.rotation = Math.PI;
-      // texture.center.set(0.5, 0.5);
-      // texture.flipY = false;
     },
     
-    // Progress callback
+    // Loading progress callback
     function(progress) {
       console.log('Loading backboard texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
     },
     
-    // Error callback
+    // Error handling
     function(error) {
       console.error('Failed to load basketball backboard texture:', error);
       console.log('Using fallback white material');
     }
   );
   
-  // CREATE MATERIALS ARRAY - DIFFERENT MATERIAL FOR EACH FACE
+  // Create materials array for different faces of the backboard
   const backboardMaterials = [
-    // Right face (+X)
+    // Side faces use simple white material
     new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
-    // Left face (-X) 
     new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
-    // Top face (+Y)
+    // Top and bottom faces
     new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
-    // Bottom face (-Y)
     new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
-    // Front face (+Z) - THIS GETS THE TEXTURE
+    // Front face gets the detailed texture
     new THREE.MeshPhongMaterial({ 
       map: backboardTexture, 
       transparent: true, 
       opacity: 0.9, 
       shininess: 20 
     }),
-    // Back face (-Z)
+    // Back face uses simple white material
     new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
   ];
   
-  // CREATE BACKBOARD MESH WITH MATERIALS ARRAY
+  // Create the backboard mesh with different materials per face
   const backboardMesh = new THREE.Mesh(backboardGeometry, backboardMaterials);
 
-  // Position and rotate backboard based on which side of court
+  // Position and orient backboard to face the center of the court
   if (hoopPositionX < 0) {
-    // Left backboard faces toward positive X (center)
+    // Left backboard faces toward center court
     backboardMesh.position.set(hoopPositionX + 1, 5, 0);
-    backboardMesh.rotation.y = degreesToRadians(90); // Rotate to face center
+    backboardMesh.rotation.y = degreesToRadians(90);
   } else {
-    // Right backboard faces toward negative X (center)
+    // Right backboard faces toward center court
     backboardMesh.position.set(hoopPositionX - 1, 5, 0);
-    backboardMesh.rotation.y = degreesToRadians(-90); // Rotate to face center
+    backboardMesh.rotation.y = degreesToRadians(-90);
   }
 
   backboardMesh.castShadow = true;
@@ -225,39 +219,41 @@ function createBasketballHoop(hoopPositionX) {
   
   scene.add(basketballHoopGroup);
 
-  // Basketball rim (orange color at regulation height) - 3D version
+  // Create the basketball rim using a torus geometry
   const basketballRimGeometry = new THREE.TorusGeometry(0.23, 0.02, 8, 16);
   const basketballRimMaterial = new THREE.MeshPhongMaterial({ color: 0xff6600 });
   const basketballRimMesh = new THREE.Mesh(basketballRimGeometry, basketballRimMaterial);
 
-  // Position rim in front of backboard, facing upward
-  basketballRimMesh.rotation.x = degreesToRadians(-90); // Make it horizontal
+  // Orient rim horizontally and position in front of backboard
+  basketballRimMesh.rotation.x = degreesToRadians(-90);
 
   if (hoopPositionX < 0) {
-    // Left rim - positioned in front of left backboard
+    // Position left rim in front of left backboard
     basketballRimMesh.position.set(hoopPositionX + 1.3, 4.5, 0);
   } else {
-    // Right rim - positioned in front of right backboard  
+    // Position right rim in front of right backboard
     basketballRimMesh.position.set(hoopPositionX - 1.3, 4.5, 0);
   }
 
   basketballRimMesh.castShadow = true;
   basketballHoopGroup.add(basketballRimMesh);
 
-  // Basketball net using line segments (12 vertical lines + horizontal lines)
+  // Create basketball net using line segments
   const basketballNetGroup = new THREE.Group();
-  const numberOfNetSegments = 12;
+  const numberOfNetSegments = 12; // Number of vertical net strands
   const netLineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
-  // Create 12 vertical lines
+  // Create vertical net strands hanging from the rim
   for (let segmentIndex = 0; segmentIndex < numberOfNetSegments; segmentIndex++) {
     const segmentAngle = (segmentIndex / numberOfNetSegments) * Math.PI * 2;
+    
+    // Calculate positions at rim and bottom of net
     const rimTopX = Math.cos(segmentAngle) * 0.23;
     const rimTopZ = Math.sin(segmentAngle) * 0.23;
     const netBottomX = Math.cos(segmentAngle) * 0.15;
     const netBottomZ = Math.sin(segmentAngle) * 0.15;
     
-    // Create vertical line segment from rim to bottom of net
+    // Create vertical line from rim to bottom
     const verticalNetPoints = [
       new THREE.Vector3(rimTopX, 0, rimTopZ),
       new THREE.Vector3(netBottomX, -0.4, netBottomZ)
@@ -268,13 +264,14 @@ function createBasketballHoop(hoopPositionX) {
     basketballNetGroup.add(verticalNetLine);
   }
 
-  // Create horizontal lines (3 levels)
+  // Create horizontal connecting lines at different levels
   const horizontalLevels = [-0.1, -0.25, -0.35];
   
   for (let levelIndex = 0; levelIndex < horizontalLevels.length; levelIndex++) {
     const yLevel = horizontalLevels[levelIndex];
-    const radiusAtLevel = 0.23 - (Math.abs(yLevel) * 0.2); // Gradually smaller radius
+    const radiusAtLevel = 0.23 - (Math.abs(yLevel) * 0.2); // Net tapers toward bottom
     
+    // Create connecting lines between adjacent vertical strands
     for (let segmentIndex = 0; segmentIndex < numberOfNetSegments; segmentIndex++) {
       const angle1 = (segmentIndex / numberOfNetSegments) * Math.PI * 2;
       const angle2 = ((segmentIndex + 1) / numberOfNetSegments) * Math.PI * 2;
@@ -284,7 +281,7 @@ function createBasketballHoop(hoopPositionX) {
       const x2 = Math.cos(angle2) * radiusAtLevel;
       const z2 = Math.sin(angle2) * radiusAtLevel;
       
-      // Create horizontal line segment
+      // Create horizontal connecting line
       const horizontalNetPoints = [
         new THREE.Vector3(x1, yLevel, z1),
         new THREE.Vector3(x2, yLevel, z2)
@@ -296,7 +293,7 @@ function createBasketballHoop(hoopPositionX) {
     }
   }
 
-  // Position the entire net group under the rim
+  // Position the complete net under the rim
   if (hoopPositionX < 0) {
     basketballNetGroup.position.set(hoopPositionX + 1.3, 4.5, 0);
   } else {
@@ -306,36 +303,33 @@ function createBasketballHoop(hoopPositionX) {
   basketballHoopGroup.add(basketballNetGroup);
 }
 
-
-// Create basketball with your custom texture
-// Enhanced basketball creation function with simple, wide seam lines
+// Create a realistic basketball with texture and seam lines
 function createBasketball() {
-  // Create basketball group to hold ball and seam lines
+  // Group to hold the ball and all seam lines
   const basketballGroup = new THREE.Group();
   
-  // Create texture loader
   const textureLoader = new THREE.TextureLoader();
   
-  // Basketball geometry (higher segments for smoother appearance)
+  // Create sphere geometry with high detail for smooth appearance
   const basketballGeometry = new THREE.SphereGeometry(0.12, 64, 64);
   
   // Load basketball texture
   const basketballTexture = textureLoader.load(
     './src/textures/basketball.jpeg',
     
-    // Success callback
+    // Texture loaded successfully
     function(texture) {
       console.log('Basketball texture loaded successfully');
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
     },
     
-    // Progress callback
+    // Loading progress callback
     function(progress) {
       console.log('Loading basketball texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
     },
     
-    // Error callback - fallback to orange
+    // Error handling - fallback to orange color
     function(error) {
       console.error('Failed to load basketball texture:', error);
       console.log('Using fallback orange material');
@@ -346,7 +340,7 @@ function createBasketball() {
     }
   );
   
-  // Basketball material
+  // Create basketball material
   const basketballMaterial = new THREE.MeshPhongMaterial({ 
     map: basketballTexture,
     color: 0xff6600, // Orange base color
@@ -354,26 +348,23 @@ function createBasketball() {
     bumpScale: 0.1
   });
   
-  // Create basketball mesh
+  // Create the main basketball mesh
   const basketballMesh = new THREE.Mesh(basketballGeometry, basketballMaterial);
   basketballMesh.castShadow = true;
   basketballMesh.receiveShadow = true;
   basketballGroup.add(basketballMesh);
   
-  // === CREATE SIMPLE WIDE SEAM LINES ===
+  // Create realistic basketball seam lines
+  const ballRadius = 0.118; // Slightly smaller radius so seams sit on surface
   
-  const ballRadius = 0.118; // Even smaller radius - seams sit deeper in the surface
-  
-  // Create wide seam lines using thick tubes that sit flush with the ball surface
+  // Helper function to create wide seam lines using tube geometry
   function createWideSeam(points, thickness = 0.004) {
-    // Create a curve from the points
     const curve = new THREE.CatmullRomCurve3(points);
     
-    // Create tube geometry for seam line (very thin)
     const tubeGeometry = new THREE.TubeGeometry(curve, 32, thickness, 8, false);
     const seamMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x000000,
-      shininess: 5  // Less shiny for more matte look
+      shininess: 5
     });
     
     const seamMesh = new THREE.Mesh(tubeGeometry, seamMaterial);
@@ -381,16 +372,16 @@ function createBasketball() {
     return seamMesh;
   }
   
-  // === SIMPLE 4-SEAM BASKETBALL PATTERN ===
+  // Create the four main vertical seam lines
   
-  // Main vertical seam 1 (front)
+  // First vertical seam (front of ball)
   const seam1Points = [];
   for (let i = 0; i <= 32; i++) {
     const t = i / 32;
-    const phi = Math.PI * t; // From top (0) to bottom (PI)
+    const phi = Math.PI * t; // From north pole to south pole
     
-    // Simple curved seam - gentle S-curve
-    const theta = Math.sin(phi * 2) * 0.4; // Creates gentle S-curve
+    // Create gentle S-curve characteristic of basketball seams
+    const theta = Math.sin(phi * 2) * 0.4;
     
     const x = ballRadius * Math.sin(phi) * Math.cos(theta);
     const y = ballRadius * Math.cos(phi);
@@ -398,10 +389,10 @@ function createBasketball() {
     
     seam1Points.push(new THREE.Vector3(x, y, z));
   }
-  const seam1 = createWideSeam(seam1Points, 0.003); // Same thickness as horizontal rings
+  const seam1 = createWideSeam(seam1Points, 0.003);
   basketballGroup.add(seam1);
   
-  // Main vertical seam 2 (right side) - 90° rotation
+  // Second vertical seam (90 degrees rotated)
   const seam2Points = [];
   for (let i = 0; i <= 32; i++) {
     const t = i / 32;
@@ -415,10 +406,10 @@ function createBasketball() {
     
     seam2Points.push(new THREE.Vector3(x, y, z));
   }
-  const seam2 = createWideSeam(seam2Points, 0.003); // Same thickness as horizontal rings
+  const seam2 = createWideSeam(seam2Points, 0.003);
   basketballGroup.add(seam2);
   
-  // Main vertical seam 3 (back) - 180° rotation
+  // Third vertical seam (back of ball)
   const seam3Points = [];
   for (let i = 0; i <= 32; i++) {
     const t = i / 32;
@@ -432,10 +423,10 @@ function createBasketball() {
     
     seam3Points.push(new THREE.Vector3(x, y, z));
   }
-  const seam3 = createWideSeam(seam3Points, 0.003); // Same thickness as horizontal rings
+  const seam3 = createWideSeam(seam3Points, 0.003);
   basketballGroup.add(seam3);
   
-  // Main vertical seam 4 (left side) - 270° rotation
+  // Fourth vertical seam (270 degrees rotated)
   const seam4Points = [];
   for (let i = 0; i <= 32; i++) {
     const t = i / 32;
@@ -449,14 +440,14 @@ function createBasketball() {
     
     seam4Points.push(new THREE.Vector3(x, y, z));
   }
-  const seam4 = createWideSeam(seam4Points, 0.003); // Same thickness as horizontal rings
+  const seam4 = createWideSeam(seam4Points, 0.003);
   basketballGroup.add(seam4);
   
-  // === HORIZONTAL CONNECTING SEAMS (EQUATOR) ===
+  // Create horizontal connecting seam rings
   
-  // Top connecting ring
+  // Upper connecting ring
   const topRingPoints = [];
-  const topPhi = Math.PI * 0.25; // Upper quarter
+  const topPhi = Math.PI * 0.25;
   for (let i = 0; i <= 32; i++) {
     const theta = (i / 32) * Math.PI * 2;
     
@@ -469,9 +460,9 @@ function createBasketball() {
   const topRing = createWideSeam(topRingPoints, 0.003);
   basketballGroup.add(topRing);
   
-  // Bottom connecting ring
+  // Lower connecting ring
   const bottomRingPoints = [];
-  const bottomPhi = Math.PI * 0.75; // Lower quarter
+  const bottomPhi = Math.PI * 0.75;
   for (let i = 0; i <= 32; i++) {
     const theta = (i / 32) * Math.PI * 2;
     
@@ -486,7 +477,7 @@ function createBasketball() {
   
   // Center equator ring
   const equatorPoints = [];
-  const equatorPhi = Math.PI * 0.5; // Exact middle
+  const equatorPhi = Math.PI * 0.5; // Exact center of ball
   for (let i = 0; i <= 32; i++) {
     const theta = (i / 32) * Math.PI * 2;
     
@@ -499,32 +490,31 @@ function createBasketball() {
   const equatorRing = createWideSeam(equatorPoints, 0.003);
   basketballGroup.add(equatorRing);
   
-  
-  // Position basketball group at center court
+  // Position basketball at center court, slightly above ground
   basketballGroup.position.set(0, 0.25, 0);
   
-  // Rotate basketball for better seam visibility
+  // Rotate basketball slightly for better visual presentation of seams
   basketballGroup.rotation.y = Math.PI / 6;
   basketballGroup.rotation.x = Math.PI / 12;
   
-  // Add to scene
+  // Add the complete basketball to the scene
   scene.add(basketballGroup);
   
   return basketballGroup;
 }
 
-// Create all elements
+// Initialize all scene elements
 createBasketballCourt();
-createBasketballHoop(-15);  
-createBasketballHoop(15);   
+createBasketballHoop(-15); // Left hoop
+createBasketballHoop(15);  // Right hoop
 createBasketball();
 
-// Set camera position for better view
+// Position camera for optimal initial view of the court
 const cameraTranslate = new THREE.Matrix4();
 cameraTranslate.makeTranslation(0, 15, 30);
 camera.applyMatrix4(cameraTranslate);
 
-// Orbit controls
+// Set up orbit controls for interactive camera movement
 const controls = new OrbitControls(camera, renderer.domElement);
 let isOrbitEnabled = true;
 
@@ -544,24 +534,27 @@ instructionsElement.style.textAlign = 'left';
 ;
 document.body.appendChild(instructionsElement);
 
-// Handle key events
+// Handle keyboard input for camera controls
 function handleKeyDown(e) {
   if (e.key === "o") {
+    // Toggle orbit camera controls on/off
     isOrbitEnabled = !isOrbitEnabled;
   }
 }
 
 document.addEventListener('keydown', handleKeyDown);
 
-// Animation function
+// Main animation loop
 function animate() {
   requestAnimationFrame(animate);
   
-  // Update controls
+  // Update orbit controls based on current state
   controls.enabled = isOrbitEnabled;
   controls.update();
   
+  // Render the scene
   renderer.render(scene, camera);
 }
 
+// Start the animation loop
 animate();

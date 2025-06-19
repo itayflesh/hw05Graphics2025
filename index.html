@@ -5,7 +5,7 @@
     <title>Basketball Court - HW5</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        /* Reset and Base Styles */
+        /* Basic reset for consistent styling across browsers */
         * {
             margin: 0;
             padding: 0;
@@ -14,25 +14,26 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            overflow: hidden;
+            overflow: hidden; /* Hide scrollbars for full-screen 3D experience */
             background: #000;
             color: #fff;
         }
 
-        /* Canvas Container */
+        /* Main container for the THREE.js canvas */
         #canvas-container {
             position: relative;
             width: 100vw;
             height: 100vh;
         }
 
-        /* UI Overlay System */
+        /* Base class for all UI overlays */
         .ui-overlay {
             position: absolute;
             z-index: 100;
-            pointer-events: none;
+            pointer-events: none; /* Allow mouse interaction with 3D scene */
         }
 
+        /* Shared styling for UI panels */
         .ui-panel {
             background: rgba(0, 0, 0, 0.7);
             border: 2px solid rgba(255, 165, 0, 0.8);
@@ -41,10 +42,10 @@
             backdrop-filter: blur(5px);
             font-size: 14px;
             line-height: 1.4;
-            pointer-events: auto;
+            pointer-events: auto; /* Re-enable pointer events for panel content */
         }
 
-        /* Score Display - Top Center */
+        /* Score display positioned at top center */
         #score-display {
             top: 20px;
             left: 50%;
@@ -54,7 +55,7 @@
         }
 
         #score-display h2 {
-            color: #ff6600;
+            color: #ff6600; /* Basketball orange theme */
             font-size: 18px;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
@@ -79,7 +80,7 @@
             color: #ff6600;
         }
 
-        /* Controls Display - Bottom Left */
+        /* Controls display positioned at bottom left */
         #controls-display {
             bottom: 20px;
             left: 20px;
@@ -111,6 +112,7 @@
             margin-left: 8px;
         }
 
+        /* Styling for keyboard key indicators */
         .control-key {
             background: rgba(255, 102, 0, 0.2);
             border: 1px solid #ff6600;
@@ -129,6 +131,7 @@
             color: #ccc;
         }
 
+        /* Disabled state for features not yet implemented */
         .control-disabled {
             opacity: 0.5;
         }
@@ -143,7 +146,7 @@
             color: #666;
         }
 
-        /* Responsive Design */
+        /* Mobile responsive adjustments */
         @media (max-width: 768px) {
             .ui-panel {
                 padding: 10px;
@@ -167,14 +170,14 @@
     <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
 </head>
 <body>
-    <!-- Canvas Container -->
+    <!-- Main container where THREE.js will render the 3D scene -->
     <div id="canvas-container">
-        <!-- THREE.js canvas will be inserted here -->
+        <!-- THREE.js canvas will be inserted here dynamically -->
     </div>
 
-    <!-- UI Overlay System -->
+    <!-- UI overlay system for score and controls -->
     
-    <!-- Score Display (Top Center) -->
+    <!-- Score display panel at top of screen -->
     <div id="score-display" class="ui-overlay ui-panel">
         <h2>🏀 Basketball Court</h2>
         <div class="score-board">
@@ -190,11 +193,11 @@
         </div>
     </div>
 
-    <!-- Controls Display (Bottom Left) -->
+    <!-- Controls instruction panel at bottom left -->
     <div id="controls-display" class="ui-overlay ui-panel">
         <h3>🎮 Controls</h3>
         
-        <!-- Camera Controls Section -->
+        <!-- Currently available camera controls -->
         <div class="control-section">
             <div class="control-section-title">Camera</div>
             <div class="control-group">
@@ -211,7 +214,7 @@
             </div>
         </div>
 
-        <!-- Basketball Movement Section (HW6) -->
+        <!-- Basketball movement controls (to be implemented in HW6) -->
         <div class="control-section control-disabled">
             <div class="control-section-title">Basketball Movement</div>
             <div class="control-group">
@@ -232,7 +235,7 @@
             </div>
         </div>
 
-        <!-- Basketball Actions Section (HW6) -->
+        <!-- Basketball action controls (to be implemented in HW6) -->
         <div class="control-section control-disabled">
             <div class="control-section-title">Basketball Actions</div>
             <div class="control-group">
@@ -254,7 +257,7 @@
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- Load the main JavaScript file -->
     <script src="src/hw5.js" type="module"></script>
 </body>
 </html>
