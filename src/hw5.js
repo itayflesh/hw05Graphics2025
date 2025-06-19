@@ -308,28 +308,26 @@ function createBasketballHoop(hoopPositionX) {
 
 
 // Create basketball with your custom texture
+// Enhanced basketball creation function with simple, wide seam lines
 function createBasketball() {
+  // Create basketball group to hold ball and seam lines
+  const basketballGroup = new THREE.Group();
+  
   // Create texture loader
   const textureLoader = new THREE.TextureLoader();
   
-  // Basketball geometry (higher segments for smoother appearance with texture)
+  // Basketball geometry (higher segments for smoother appearance)
   const basketballGeometry = new THREE.SphereGeometry(0.12, 64, 64);
   
-  // Load your basketball texture
+  // Load basketball texture
   const basketballTexture = textureLoader.load(
-    './src/textures/basketball.png',  // Path to your texture file
+    './src/textures/basketball.jpeg',
     
     // Success callback
     function(texture) {
       console.log('Basketball texture loaded successfully');
-      
-      // Optional: Adjust texture properties for better appearance
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      
-      // You might need to adjust these values based on how the texture looks
-      // texture.repeat.set(1, 1);  // Use this if texture appears too stretched
-      // texture.offset.set(0, 0);  // Use this to adjust texture positioning
     },
     
     // Progress callback
@@ -337,12 +335,10 @@ function createBasketball() {
       console.log('Loading basketball texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
     },
     
-    // Error callback - fallback to simple orange if texture fails
+    // Error callback - fallback to orange
     function(error) {
       console.error('Failed to load basketball texture:', error);
       console.log('Using fallback orange material');
-      
-      // Fallback to simple orange material
       basketballMesh.material = new THREE.MeshPhongMaterial({ 
         color: 0xff6600,
         shininess: 30
@@ -350,28 +346,204 @@ function createBasketball() {
     }
   );
   
-  // Basketball material with your texture
+  // Basketball material
   const basketballMaterial = new THREE.MeshPhongMaterial({ 
     map: basketballTexture,
-    shininess: 20,      // Slight shine for realistic basketball appearance
-    bumpScale: 0.1      // Optional: adds slight surface bumps for texture
+    color: 0xff6600, // Orange base color
+    shininess: 20,
+    bumpScale: 0.1
   });
   
   // Create basketball mesh
   const basketballMesh = new THREE.Mesh(basketballGeometry, basketballMaterial);
   basketballMesh.castShadow = true;
   basketballMesh.receiveShadow = true;
+  basketballGroup.add(basketballMesh);
   
-  // Position basketball at center court, slightly above the ground
-  basketballMesh.position.set(0, 0.25, 0); // x=0 (center), y=0.25 (above court), z=0 (center)
+  // === CREATE SIMPLE WIDE SEAM LINES ===
   
-  // Optional: Rotate basketball to get best seam line positioning
-  basketballMesh.rotation.y = Math.PI / 4; // Rotate 45 degrees if needed
+  const ballRadius = 0.118; // Even smaller radius - seams sit deeper in the surface
+  
+  // Create wide seam lines using thick tubes that sit flush with the ball surface
+  function createWideSeam(points, thickness = 0.004) {
+    // Create a curve from the points
+    const curve = new THREE.CatmullRomCurve3(points);
+    
+    // Create tube geometry for seam line (very thin)
+    const tubeGeometry = new THREE.TubeGeometry(curve, 32, thickness, 8, false);
+    const seamMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x000000,
+      shininess: 5  // Less shiny for more matte look
+    });
+    
+    const seamMesh = new THREE.Mesh(tubeGeometry, seamMaterial);
+    seamMesh.castShadow = true;
+    return seamMesh;
+  }
+  
+  // === SIMPLE 4-SEAM BASKETBALL PATTERN ===
+  
+  // Main vertical seam 1 (front)
+  const seam1Points = [];
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
+    const phi = Math.PI * t; // From top (0) to bottom (PI)
+    
+    // Simple curved seam - gentle S-curve
+    const theta = Math.sin(phi * 2) * 0.4; // Creates gentle S-curve
+    
+    const x = ballRadius * Math.sin(phi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(phi);
+    const z = ballRadius * Math.sin(phi) * Math.sin(theta);
+    
+    seam1Points.push(new THREE.Vector3(x, y, z));
+  }
+  const seam1 = createWideSeam(seam1Points, 0.003); // Same thickness as horizontal rings
+  basketballGroup.add(seam1);
+  
+  // Main vertical seam 2 (right side) - 90° rotation
+  const seam2Points = [];
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
+    const phi = Math.PI * t;
+    
+    const theta = Math.PI/2 + Math.sin(phi * 2) * 0.4;
+    
+    const x = ballRadius * Math.sin(phi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(phi);
+    const z = ballRadius * Math.sin(phi) * Math.sin(theta);
+    
+    seam2Points.push(new THREE.Vector3(x, y, z));
+  }
+  const seam2 = createWideSeam(seam2Points, 0.003); // Same thickness as horizontal rings
+  basketballGroup.add(seam2);
+  
+  // Main vertical seam 3 (back) - 180° rotation
+  const seam3Points = [];
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
+    const phi = Math.PI * t;
+    
+    const theta = Math.PI + Math.sin(phi * 2) * 0.4;
+    
+    const x = ballRadius * Math.sin(phi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(phi);
+    const z = ballRadius * Math.sin(phi) * Math.sin(theta);
+    
+    seam3Points.push(new THREE.Vector3(x, y, z));
+  }
+  const seam3 = createWideSeam(seam3Points, 0.003); // Same thickness as horizontal rings
+  basketballGroup.add(seam3);
+  
+  // Main vertical seam 4 (left side) - 270° rotation
+  const seam4Points = [];
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
+    const phi = Math.PI * t;
+    
+    const theta = -Math.PI/2 + Math.sin(phi * 2) * 0.4;
+    
+    const x = ballRadius * Math.sin(phi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(phi);
+    const z = ballRadius * Math.sin(phi) * Math.sin(theta);
+    
+    seam4Points.push(new THREE.Vector3(x, y, z));
+  }
+  const seam4 = createWideSeam(seam4Points, 0.003); // Same thickness as horizontal rings
+  basketballGroup.add(seam4);
+  
+  // === HORIZONTAL CONNECTING SEAMS (EQUATOR) ===
+  
+  // Top connecting ring
+  const topRingPoints = [];
+  const topPhi = Math.PI * 0.25; // Upper quarter
+  for (let i = 0; i <= 32; i++) {
+    const theta = (i / 32) * Math.PI * 2;
+    
+    const x = ballRadius * Math.sin(topPhi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(topPhi);
+    const z = ballRadius * Math.sin(topPhi) * Math.sin(theta);
+    
+    topRingPoints.push(new THREE.Vector3(x, y, z));
+  }
+  const topRing = createWideSeam(topRingPoints, 0.003);
+  basketballGroup.add(topRing);
+  
+  // Bottom connecting ring
+  const bottomRingPoints = [];
+  const bottomPhi = Math.PI * 0.75; // Lower quarter
+  for (let i = 0; i <= 32; i++) {
+    const theta = (i / 32) * Math.PI * 2;
+    
+    const x = ballRadius * Math.sin(bottomPhi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(bottomPhi);
+    const z = ballRadius * Math.sin(bottomPhi) * Math.sin(theta);
+    
+    bottomRingPoints.push(new THREE.Vector3(x, y, z));
+  }
+  const bottomRing = createWideSeam(bottomRingPoints, 0.003);
+  basketballGroup.add(bottomRing);
+  
+  // Center equator ring
+  const equatorPoints = [];
+  const equatorPhi = Math.PI * 0.5; // Exact middle
+  for (let i = 0; i <= 32; i++) {
+    const theta = (i / 32) * Math.PI * 2;
+    
+    const x = ballRadius * Math.sin(equatorPhi) * Math.cos(theta);
+    const y = ballRadius * Math.cos(equatorPhi);
+    const z = ballRadius * Math.sin(equatorPhi) * Math.sin(theta);
+    
+    equatorPoints.push(new THREE.Vector3(x, y, z));
+  }
+  const equatorRing = createWideSeam(equatorPoints, 0.003);
+  basketballGroup.add(equatorRing);
+  
+  // === ALTERNATIVE: EVEN SIMPLER VERSION ===
+  // Uncomment this section and comment the above for ultra-simple seams
+  /*
+  // Simple approach: Just 4 straight meridian lines + 1 equator
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2;
+    const meridianPoints = [];
+    
+    for (let j = 0; j <= 24; j++) {
+      const phi = (j / 24) * Math.PI;
+      const x = ballRadius * Math.sin(phi) * Math.cos(angle);
+      const y = ballRadius * Math.cos(phi);
+      const z = ballRadius * Math.sin(phi) * Math.sin(angle);
+      meridianPoints.push(new THREE.Vector3(x, y, z));
+    }
+    
+    const meridianSeam = createWideSeam(meridianPoints, 0.012); // Even thicker
+    basketballGroup.add(meridianSeam);
+  }
+  
+  // Single equator line
+  const simpleEquatorPoints = [];
+  for (let i = 0; i <= 32; i++) {
+    const theta = (i / 32) * Math.PI * 2;
+    const x = ballRadius * Math.cos(theta);
+    const y = 0;
+    const z = ballRadius * Math.sin(theta);
+    simpleEquatorPoints.push(new THREE.Vector3(x, y, z));
+  }
+  const simpleEquator = createWideSeam(simpleEquatorPoints, 0.012);
+  basketballGroup.add(simpleEquator);
+  */
+  
+  // Position basketball group at center court
+  basketballGroup.position.set(0, 0.25, 0);
+  
+  // Rotate basketball for better seam visibility
+  basketballGroup.rotation.y = Math.PI / 6;
+  basketballGroup.rotation.x = Math.PI / 12;
   
   // Add to scene
-  scene.add(basketballMesh);
+  scene.add(basketballGroup);
+  
+  return basketballGroup;
 }
-
 
 // Create all elements
 createBasketballCourt();
