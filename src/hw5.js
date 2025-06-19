@@ -499,38 +499,6 @@ function createBasketball() {
   const equatorRing = createWideSeam(equatorPoints, 0.003);
   basketballGroup.add(equatorRing);
   
-  // === ALTERNATIVE: EVEN SIMPLER VERSION ===
-  // Uncomment this section and comment the above for ultra-simple seams
-  /*
-  // Simple approach: Just 4 straight meridian lines + 1 equator
-  for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * Math.PI * 2;
-    const meridianPoints = [];
-    
-    for (let j = 0; j <= 24; j++) {
-      const phi = (j / 24) * Math.PI;
-      const x = ballRadius * Math.sin(phi) * Math.cos(angle);
-      const y = ballRadius * Math.cos(phi);
-      const z = ballRadius * Math.sin(phi) * Math.sin(angle);
-      meridianPoints.push(new THREE.Vector3(x, y, z));
-    }
-    
-    const meridianSeam = createWideSeam(meridianPoints, 0.012); // Even thicker
-    basketballGroup.add(meridianSeam);
-  }
-  
-  // Single equator line
-  const simpleEquatorPoints = [];
-  for (let i = 0; i <= 32; i++) {
-    const theta = (i / 32) * Math.PI * 2;
-    const x = ballRadius * Math.cos(theta);
-    const y = 0;
-    const z = ballRadius * Math.sin(theta);
-    simpleEquatorPoints.push(new THREE.Vector3(x, y, z));
-  }
-  const simpleEquator = createWideSeam(simpleEquatorPoints, 0.012);
-  basketballGroup.add(simpleEquator);
-  */
   
   // Position basketball group at center court
   basketballGroup.position.set(0, 0.25, 0);
@@ -569,10 +537,11 @@ instructionsElement.style.color = 'white';
 instructionsElement.style.fontSize = '16px';
 instructionsElement.style.fontFamily = 'Arial, sans-serif';
 instructionsElement.style.textAlign = 'left';
-instructionsElement.innerHTML = `
-  <h3>Controls:</h3>
-  <p>O - Toggle orbit camera</p>
-`;
+// instructionsElement.innerHTML = `
+//   <h3>Controls:</h3>
+//   <p>O - Toggle orbit camera</p>
+// `
+;
 document.body.appendChild(instructionsElement);
 
 // Handle key events

@@ -17,3 +17,7 @@
 ## Technical Details
 - Run the server with: `node index.js`
 - Access at http://localhost:8000 in your web browser
+
+## Additional Features Implemented
+- Realistic basketball court wood texture
+- Detailed basketball backboard textures
