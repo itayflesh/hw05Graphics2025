@@ -21,7 +21,7 @@ scene.add(directionalLight);
 renderer.shadowMap.enabled = true;
 directionalLight.castShadow = true;
 
-function degrees_to_radians(degrees) {
+function degreesToRadians(degrees) {
   var pi = Math.PI;
   return degrees * (pi/180);
 }
@@ -46,7 +46,7 @@ function createBasketballCourt() {
       texture.rotation = Math.PI / 2;  // Rotate 90 degrees
       texture.center.set(0.5, 0.5);    // Set rotation center to middle of texture
       
-      // Optional: Adjust texture properties for better appearance
+      // Adjust texture properties for better appearance
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       
@@ -95,23 +95,23 @@ function createBasketballCourt() {
   // Center circle at court center (bigger size as requested)
   const centerCircleGeometry = new THREE.RingGeometry(2, 2.2, 32);
   const centerCircleMesh = new THREE.Mesh(centerCircleGeometry, courtLinesMaterial);
-  centerCircleMesh.rotation.x = degrees_to_radians(-90);
+  centerCircleMesh.rotation.x = degreesToRadians(-90);
   centerCircleMesh.position.y = 0.11;
   scene.add(centerCircleMesh);
   
   // Left side three-point line (positioned at the LEFT END of court)
   const leftThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
   const leftThreePointMesh = new THREE.Mesh(leftThreePointGeometry, courtLinesMaterial);
-  leftThreePointMesh.rotation.x = degrees_to_radians(-90);
-  leftThreePointMesh.rotation.z = degrees_to_radians(-90); // Rotate to face the correct direction
+  leftThreePointMesh.rotation.x = degreesToRadians(-90);
+  leftThreePointMesh.rotation.z = degreesToRadians(-90); // Rotate to face the correct direction
   leftThreePointMesh.position.set(-15, 0.11, 0); // Move closer to the end of court
   scene.add(leftThreePointMesh);
   
   // Right side three-point line (positioned at the RIGHT END of court)
   const rightThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
   const rightThreePointMesh = new THREE.Mesh(rightThreePointGeometry, courtLinesMaterial);
-  rightThreePointMesh.rotation.x = degrees_to_radians(-90);
-  rightThreePointMesh.rotation.z = degrees_to_radians(90); // Rotate to face the correct direction
+  rightThreePointMesh.rotation.x = degreesToRadians(-90);
+  rightThreePointMesh.rotation.z = degreesToRadians(90); // Rotate to face the correct direction
   rightThreePointMesh.position.set(15, 0.11, 0); // Move closer to the end of court
   scene.add(rightThreePointMesh);
 }
@@ -138,11 +138,11 @@ function createBasketballHoop(hoopPositionX) {
   if (hoopPositionX < 0) {
     // Left hoop - arm points toward positive X (center)
     supportArmMesh.position.set(hoopPositionX + 0.5, 5, 0);
-    supportArmMesh.rotation.y = degrees_to_radians(90);
+    supportArmMesh.rotation.y = degreesToRadians(90);
   } else {
     // Right hoop - arm points toward negative X (center)
     supportArmMesh.position.set(hoopPositionX - 0.5, 5, 0);
-    supportArmMesh.rotation.y = degrees_to_radians(-90);
+    supportArmMesh.rotation.y = degreesToRadians(-90);
   }
   
   supportArmMesh.castShadow = true;
@@ -212,11 +212,11 @@ function createBasketballHoop(hoopPositionX) {
   if (hoopPositionX < 0) {
     // Left backboard faces toward positive X (center)
     backboardMesh.position.set(hoopPositionX + 1, 5, 0);
-    backboardMesh.rotation.y = degrees_to_radians(90); // Rotate to face center
+    backboardMesh.rotation.y = degreesToRadians(90); // Rotate to face center
   } else {
     // Right backboard faces toward negative X (center)
     backboardMesh.position.set(hoopPositionX - 1, 5, 0);
-    backboardMesh.rotation.y = degrees_to_radians(-90); // Rotate to face center
+    backboardMesh.rotation.y = degreesToRadians(-90); // Rotate to face center
   }
 
   backboardMesh.castShadow = true;
@@ -231,7 +231,7 @@ function createBasketballHoop(hoopPositionX) {
   const basketballRimMesh = new THREE.Mesh(basketballRimGeometry, basketballRimMaterial);
 
   // Position rim in front of backboard, facing upward
-  basketballRimMesh.rotation.x = degrees_to_radians(-90); // Make it horizontal
+  basketballRimMesh.rotation.x = degreesToRadians(-90); // Make it horizontal
 
   if (hoopPositionX < 0) {
     // Left rim - positioned in front of left backboard

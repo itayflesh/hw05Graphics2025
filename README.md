@@ -21,3 +21,6 @@
 ## Additional Features Implemented
 - Realistic basketball court wood texture
 - Detailed basketball backboard textures
+
+## Known Issues or Limitations
+- None currently identified
