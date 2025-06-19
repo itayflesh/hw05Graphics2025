@@ -26,53 +26,61 @@ function degrees_to_radians(degrees) {
   return degrees * (pi/180);
 }
 
-// Create basketball court
+// Create basketball court with texture
 function createBasketballCourt() {
-  // Court floor - just a simple brown surface
+  // Create texture loader
+  const textureLoader = new THREE.TextureLoader();
+  
+  // Court floor with basketball court texture
   const courtGeometry = new THREE.BoxGeometry(30, 0.2, 15);
+  
+  // Load the basketball court wood texture
+  const courtTexture = textureLoader.load(
+    './src/textures/basketball_court_wood.jpg',  
+    
+    // Success callback
+    function(texture) {
+      console.log('Basketball court texture loaded successfully');
+
+      // Rotate texture 90 degrees to fix orientation
+      texture.rotation = Math.PI / 2;  // Rotate 90 degrees
+      texture.center.set(0.5, 0.5);    // Set rotation center to middle of texture
+      
+      // Optional: Adjust texture properties for better appearance
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      
+    },
+    
+    // Progress callback
+    function(progress) {
+      console.log('Loading court texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
+    },
+    
+    // Error callback - fallback to brown color if texture fails
+    function(error) {
+      console.error('Failed to load basketball court texture:', error);
+      console.log('Using fallback brown material');
+      
+      // Fallback to simple brown material
+      court.material = new THREE.MeshPhongMaterial({ 
+        color: 0xc68642,  // Brown wood color
+        shininess: 50
+      });
+    }
+  );
+  
+  // Court material with texture
   const courtMaterial = new THREE.MeshPhongMaterial({ 
-    color: 0xc68642,  // Brown wood color
-    shininess: 50
+    map: courtTexture,
+    shininess: 30  // Adjust shininess for realistic wood appearance
   });
+  
   const court = new THREE.Mesh(courtGeometry, courtMaterial);
   court.receiveShadow = true;
   scene.add(court);
   
-  // Note: All court lines, hoops, and other elements have been removed
-  // Students will need to implement these features
-
-  // White line material for all court markings
-  const courtLinesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
   
-  // Center line running down the middle of the court
-  const centerLineGeometry = new THREE.BoxGeometry(0.2, 0, 15); // 0.1
-  const centerLineMesh = new THREE.Mesh(centerLineGeometry, courtLinesMaterial);
-  centerLineMesh.position.y = 0.11;
-  scene.add(centerLineMesh);
-  
-  // Center circle at court center (bigger size as requested)
-  const centerCircleGeometry = new THREE.RingGeometry(2, 2.2, 32);
-  const centerCircleMesh = new THREE.Mesh(centerCircleGeometry, courtLinesMaterial);
-  centerCircleMesh.rotation.x = degrees_to_radians(-90);
-  centerCircleMesh.position.y = 0.11;
-  scene.add(centerCircleMesh);
-  
-  // Left side three-point line (positioned at the LEFT END of court)
-  const leftThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
-  const leftThreePointMesh = new THREE.Mesh(leftThreePointGeometry, courtLinesMaterial);
-  leftThreePointMesh.rotation.x = degrees_to_radians(-90);
-  leftThreePointMesh.rotation.z = degrees_to_radians(-90); // Rotate to face the correct direction
-  leftThreePointMesh.position.set(-15, 0.11, 0); // Move closer to the end of court
-  scene.add(leftThreePointMesh);
-  
-  // Right side three-point line (positioned at the RIGHT END of court)
-  const rightThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
-  const rightThreePointMesh = new THREE.Mesh(rightThreePointGeometry, courtLinesMaterial);
-  rightThreePointMesh.rotation.x = degrees_to_radians(-90);
-  rightThreePointMesh.rotation.z = degrees_to_radians(90); // Rotate to face the correct direction
-  rightThreePointMesh.position.set(15, 0.11, 0); // Move closer to the end of court
-  scene.add(rightThreePointMesh);
-
 }
 
 function createBasketballHoop(hoopPositionX) {
@@ -106,14 +114,65 @@ function createBasketballHoop(hoopPositionX) {
   supportArmMesh.castShadow = true;
   basketballHoopGroup.add(supportArmMesh);
 
-  // Backboard (white and partially transparent)
+  // CREATE TEXTURE LOADER FOR BACKBOARD
+  const textureLoader = new THREE.TextureLoader();
+  
+  // BACKBOARD GEOMETRY
   const backboardGeometry = new THREE.BoxGeometry(2.8, 1.6, 0.1);
-  const backboardMaterial = new THREE.MeshPhongMaterial({ 
-    color: 0xffffff, 
-    transparent: true, 
-    opacity: 0.8 
-  });
-  const backboardMesh = new THREE.Mesh(backboardGeometry, backboardMaterial);
+  
+  // LOAD THE BASKETBALL BACKBOARD TEXTURE
+  const backboardTexture = textureLoader.load(
+    './src/textures/Basketball_Backboard.jpg',
+    
+    // Success callback
+    function(texture) {
+      console.log('Basketball backboard texture loaded successfully');
+      
+      // Optional: Adjust texture properties for better appearance
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      
+      // Uncomment and modify if the texture appears rotated or flipped
+      // texture.rotation = Math.PI;
+      // texture.center.set(0.5, 0.5);
+      // texture.flipY = false;
+    },
+    
+    // Progress callback
+    function(progress) {
+      console.log('Loading backboard texture: ' + Math.round(progress.loaded / progress.total * 100) + '%');
+    },
+    
+    // Error callback
+    function(error) {
+      console.error('Failed to load basketball backboard texture:', error);
+      console.log('Using fallback white material');
+    }
+  );
+  
+  // CREATE MATERIALS ARRAY - DIFFERENT MATERIAL FOR EACH FACE
+  const backboardMaterials = [
+    // Right face (+X)
+    new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
+    // Left face (-X) 
+    new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
+    // Top face (+Y)
+    new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
+    // Bottom face (-Y)
+    new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }),
+    // Front face (+Z) - THIS GETS THE TEXTURE
+    new THREE.MeshPhongMaterial({ 
+      map: backboardTexture, 
+      transparent: true, 
+      opacity: 0.9, 
+      shininess: 20 
+    }),
+    // Back face (-Z)
+    new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+  ];
+  
+  // CREATE BACKBOARD MESH WITH MATERIALS ARRAY
+  const backboardMesh = new THREE.Mesh(backboardGeometry, backboardMaterials);
 
   // Position and rotate backboard based on which side of court
   if (hoopPositionX < 0) {
@@ -182,7 +241,6 @@ function createBasketballHoop(hoopPositionX) {
   }
 
   basketballHoopGroup.add(basketballNetGroup);
-
 }
 
 
