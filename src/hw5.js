@@ -210,11 +210,12 @@ function createBasketballHoop(hoopPositionX) {
   basketballRimMesh.castShadow = true;
   basketballHoopGroup.add(basketballRimMesh);
 
-  // Basketball net using line segments (minimum 8 segments as required)
+  // Basketball net using line segments (12 vertical lines + horizontal lines)
   const basketballNetGroup = new THREE.Group();
-  const numberOfNetSegments = 8;
+  const numberOfNetSegments = 12;
   const netLineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
+  // Create 12 vertical lines
   for (let segmentIndex = 0; segmentIndex < numberOfNetSegments; segmentIndex++) {
     const segmentAngle = (segmentIndex / numberOfNetSegments) * Math.PI * 2;
     const rimTopX = Math.cos(segmentAngle) * 0.23;
@@ -222,15 +223,43 @@ function createBasketballHoop(hoopPositionX) {
     const netBottomX = Math.cos(segmentAngle) * 0.15;
     const netBottomZ = Math.sin(segmentAngle) * 0.15;
     
-    // Create line segment from rim to bottom of net
-    const netSegmentPoints = [
+    // Create vertical line segment from rim to bottom of net
+    const verticalNetPoints = [
       new THREE.Vector3(rimTopX, 0, rimTopZ),
       new THREE.Vector3(netBottomX, -0.4, netBottomZ)
     ];
     
-    const netSegmentGeometry = new THREE.BufferGeometry().setFromPoints(netSegmentPoints);
-    const netSegmentLine = new THREE.Line(netSegmentGeometry, netLineMaterial);
-    basketballNetGroup.add(netSegmentLine);
+    const verticalNetGeometry = new THREE.BufferGeometry().setFromPoints(verticalNetPoints);
+    const verticalNetLine = new THREE.Line(verticalNetGeometry, netLineMaterial);
+    basketballNetGroup.add(verticalNetLine);
+  }
+
+  // Create horizontal lines (3 levels)
+  const horizontalLevels = [-0.1, -0.25, -0.35];
+  
+  for (let levelIndex = 0; levelIndex < horizontalLevels.length; levelIndex++) {
+    const yLevel = horizontalLevels[levelIndex];
+    const radiusAtLevel = 0.23 - (Math.abs(yLevel) * 0.2); // Gradually smaller radius
+    
+    for (let segmentIndex = 0; segmentIndex < numberOfNetSegments; segmentIndex++) {
+      const angle1 = (segmentIndex / numberOfNetSegments) * Math.PI * 2;
+      const angle2 = ((segmentIndex + 1) / numberOfNetSegments) * Math.PI * 2;
+      
+      const x1 = Math.cos(angle1) * radiusAtLevel;
+      const z1 = Math.sin(angle1) * radiusAtLevel;
+      const x2 = Math.cos(angle2) * radiusAtLevel;
+      const z2 = Math.sin(angle2) * radiusAtLevel;
+      
+      // Create horizontal line segment
+      const horizontalNetPoints = [
+        new THREE.Vector3(x1, yLevel, z1),
+        new THREE.Vector3(x2, yLevel, z2)
+      ];
+      
+      const horizontalNetGeometry = new THREE.BufferGeometry().setFromPoints(horizontalNetPoints);
+      const horizontalNetLine = new THREE.Line(horizontalNetGeometry, netLineMaterial);
+      basketballNetGroup.add(horizontalNetLine);
+    }
   }
 
   // Position the entire net group under the rim
