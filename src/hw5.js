@@ -42,7 +42,7 @@ function createBasketballCourt() {
     function(texture) {
       console.log('Basketball court texture loaded successfully');
 
-      // Rotate texture 90 degrees to fix orientation
+      // Rotate texture 90 degrees to fix orientation 
       texture.rotation = Math.PI / 2;  // Rotate 90 degrees
       texture.center.set(0.5, 0.5);    // Set rotation center to middle of texture
       
@@ -80,8 +80,42 @@ function createBasketballCourt() {
   court.receiveShadow = true;
   scene.add(court);
   
+  // Note: All court lines, hoops, and other elements have been removed
+  // Students will need to implement these features
   
+  // White line material for all court markings
+  const courtLinesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  
+  // Center line running down the middle of the court
+  const centerLineGeometry = new THREE.BoxGeometry(0.2, 0.01, 15); // Fixed height to 0.01
+  const centerLineMesh = new THREE.Mesh(centerLineGeometry, courtLinesMaterial);
+  centerLineMesh.position.y = 0.11;
+  scene.add(centerLineMesh);
+  
+  // Center circle at court center (bigger size as requested)
+  const centerCircleGeometry = new THREE.RingGeometry(2, 2.2, 32);
+  const centerCircleMesh = new THREE.Mesh(centerCircleGeometry, courtLinesMaterial);
+  centerCircleMesh.rotation.x = degrees_to_radians(-90);
+  centerCircleMesh.position.y = 0.11;
+  scene.add(centerCircleMesh);
+  
+  // Left side three-point line (positioned at the LEFT END of court)
+  const leftThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
+  const leftThreePointMesh = new THREE.Mesh(leftThreePointGeometry, courtLinesMaterial);
+  leftThreePointMesh.rotation.x = degrees_to_radians(-90);
+  leftThreePointMesh.rotation.z = degrees_to_radians(-90); // Rotate to face the correct direction
+  leftThreePointMesh.position.set(-15, 0.11, 0); // Move closer to the end of court
+  scene.add(leftThreePointMesh);
+  
+  // Right side three-point line (positioned at the RIGHT END of court)
+  const rightThreePointGeometry = new THREE.RingGeometry(6.7, 6.9, 16, 1, 0, Math.PI);
+  const rightThreePointMesh = new THREE.Mesh(rightThreePointGeometry, courtLinesMaterial);
+  rightThreePointMesh.rotation.x = degrees_to_radians(-90);
+  rightThreePointMesh.rotation.z = degrees_to_radians(90); // Rotate to face the correct direction
+  rightThreePointMesh.position.set(15, 0.11, 0); // Move closer to the end of court
+  scene.add(rightThreePointMesh);
 }
+
 
 function createBasketballHoop(hoopPositionX) {
   // Group all hoop components together
@@ -341,8 +375,8 @@ function createBasketball() {
 
 // Create all elements
 createBasketballCourt();
-createBasketballHoop(-15);  // Left hoop (matching three-point line position)
-createBasketballHoop(15);   // Right hoop (matching three-point line position)
+createBasketballHoop(-15);  
+createBasketballHoop(15);   
 createBasketball();
 
 // Set camera position for better view
