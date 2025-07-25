@@ -503,11 +503,306 @@ function createBasketball() {
   return basketballGroup;
 }
 
+// Add this section after the existing variables and before the createBasketballCourt() function
+
+// ============================================================================
+// HW6 - PHASE 1: INPUT SYSTEM FOUNDATION
+// ============================================================================
+
+// Input state tracking system
+const inputState = {
+  // Arrow keys for basketball movement
+  arrowLeft: false,
+  arrowRight: false,
+  arrowUp: false,
+  arrowDown: false,
+  
+  // W/S keys for shot power adjustment
+  keyW: false,
+  keyS: false,
+  
+  // Action keys
+  spacebar: false,
+  keyR: false,
+  
+  // Existing orbit camera toggle
+  keyO: false
+};
+
+// Game state variables for HW6
+const gameState = {
+  // Basketball physics state
+  basketball: {
+    position: { x: 0, y: 0.25, z: 0 }, // Starting at center court
+    velocity: { x: 0, y: 0, z: 0 },    // Current velocity
+    isInFlight: false,                  // Whether ball is currently flying
+    isOnGround: true                    // Whether ball is on the ground
+  },
+  
+  // Shot power system
+  shotPower: 50, // Current shot power (0-100%)
+  minPower: 0,
+  maxPower: 100,
+  powerStep: 2,  // Power increment/decrement per key press
+  
+  // Scoring system
+  score: 0,
+  shotAttempts: 0,
+  shotsMade: 0,
+  
+  // Court boundaries for basketball movement
+  courtBounds: {
+    minX: -14.5,
+    maxX: 14.5,
+    minZ: -7,
+    maxZ: 7
+  },
+  
+  // Movement speed
+  moveSpeed: 0.1 // Units per frame when moving
+};
+
+// Reference to the basketball group for manipulation
+let basketballGroup = null;
+
+/**
+ * Handle key down events
+ * @param {KeyboardEvent} event - The keyboard event
+ */
+function handleKeyDown(event) {
+  // Prevent default browser behavior for game keys
+  const gameKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', ' ', 'KeyR', 'KeyO'];
+  if (gameKeys.includes(event.code) || gameKeys.includes(event.key)) {
+    event.preventDefault();
+  }
+  
+  // Update input state based on key pressed
+  switch (event.code) {
+    // Arrow keys for basketball movement
+    case 'ArrowLeft':
+      inputState.arrowLeft = true;
+      console.log('Arrow Left pressed - Move ball left');
+      break;
+    case 'ArrowRight':
+      inputState.arrowRight = true;
+      console.log('Arrow Right pressed - Move ball right');
+      break;
+    case 'ArrowUp':
+      inputState.arrowUp = true;
+      console.log('Arrow Up pressed - Move ball forward');
+      break;
+    case 'ArrowDown':
+      inputState.arrowDown = true;
+      console.log('Arrow Down pressed - Move ball backward');
+      break;
+    
+    // W/S keys for shot power adjustment
+    case 'KeyW':
+      inputState.keyW = true;
+      console.log('W pressed - Increase shot power');
+      break;
+    case 'KeyS':
+      inputState.keyS = true;
+      console.log('S pressed - Decrease shot power');
+      break;
+    
+    // Action keys
+    case 'Space':
+      inputState.spacebar = true;
+      console.log('Spacebar pressed - Shoot basketball');
+      break;
+    case 'KeyR':
+      inputState.keyR = true;
+      console.log('R pressed - Reset basketball position');
+      break;
+    
+    // Camera toggle (existing functionality)
+    case 'KeyO':
+      inputState.keyO = true;
+      // Toggle orbit camera controls on/off
+      isOrbitEnabled = !isOrbitEnabled;
+      console.log('O pressed - Toggle orbit camera:', isOrbitEnabled);
+      break;
+  }
+}
+
+/**
+ * Handle key up events
+ * @param {KeyboardEvent} event - The keyboard event
+ */
+function handleKeyUp(event) {
+  // Update input state based on key released
+  switch (event.code) {
+    // Arrow keys for basketball movement
+    case 'ArrowLeft':
+      inputState.arrowLeft = false;
+      break;
+    case 'ArrowRight':
+      inputState.arrowRight = false;
+      break;
+    case 'ArrowUp':
+      inputState.arrowUp = false;
+      break;
+    case 'ArrowDown':
+      inputState.arrowDown = false;
+      break;
+    
+    // W/S keys for shot power adjustment
+    case 'KeyW':
+      inputState.keyW = false;
+      break;
+    case 'KeyS':
+      inputState.keyS = false;
+      break;
+    
+    // Action keys
+    case 'Space':
+      inputState.spacebar = false;
+      break;
+    case 'KeyR':
+      inputState.keyR = false;
+      break;
+    
+    // Camera toggle
+    case 'KeyO':
+      inputState.keyO = false;
+      break;
+  }
+}
+
+/**
+ * Process continuous input (called every frame)
+ * This handles keys that should trigger continuous actions while held down
+ */
+function processInput() {
+  // Only process input if basketball is not currently in flight
+  if (!gameState.basketball.isInFlight) {
+    
+    // Basketball movement (continuous while keys are held)
+    if (inputState.arrowLeft || inputState.arrowRight || 
+        inputState.arrowUp || inputState.arrowDown) {
+      console.log('Processing basketball movement input');
+      // Movement logic will be implemented in Phase 2
+    }
+    
+    // Shot power adjustment (continuous while keys are held)
+    if (inputState.keyW) {
+      adjustShotPower(gameState.powerStep);
+    }
+    if (inputState.keyS) {
+      adjustShotPower(-gameState.powerStep);
+    }
+  }
+  
+  // One-time actions (process once per key press)
+  if (inputState.spacebar) {
+    console.log('Processing shoot action');
+    inputState.spacebar = false; // Reset to prevent continuous shooting
+    // Shooting logic will be implemented in Phase 5
+  }
+  
+  if (inputState.keyR) {
+    console.log('Processing reset action');
+    inputState.keyR = false; // Reset to prevent continuous resets
+    resetBasketball();
+  }
+}
+
+/**
+ * Adjust shot power within valid range
+ * @param {number} delta - Amount to change power by (positive or negative)
+ */
+function adjustShotPower(delta) {
+  const oldPower = gameState.shotPower;
+  gameState.shotPower = Math.max(gameState.minPower, 
+                                Math.min(gameState.maxPower, 
+                                        gameState.shotPower + delta));
+  
+  // Only log if power actually changed
+  if (gameState.shotPower !== oldPower) {
+    console.log(`Shot power adjusted: ${oldPower} -> ${gameState.shotPower}%`);
+    updatePowerDisplay();
+  }
+}
+
+/**
+ * Reset basketball to center court position
+ */
+function resetBasketball() {
+  console.log('Resetting basketball to center court');
+  
+  // Reset position
+  gameState.basketball.position = { x: 0, y: 0.25, z: 0 };
+  
+  // Reset velocity
+  gameState.basketball.velocity = { x: 0, y: 0, z: 0 };
+  
+  // Reset physics state
+  gameState.basketball.isInFlight = false;
+  gameState.basketball.isOnGround = true;
+  
+  // Reset shot power to default
+  gameState.shotPower = 50;
+  
+  // Update basketball visual position (if basketball reference exists)
+  if (basketballGroup) {
+    basketballGroup.position.set(
+      gameState.basketball.position.x,
+      gameState.basketball.position.y,
+      gameState.basketball.position.z
+    );
+  }
+  
+  console.log('Basketball reset complete');
+  updatePowerDisplay();
+}
+
+/**
+ * Update power display in UI (placeholder for now)
+ */
+function updatePowerDisplay() {
+  // This will be enhanced in Phase 9 when we implement the full UI
+  console.log(`Current shot power: ${gameState.shotPower}%`);
+}
+
+/**
+ * Initialize input system
+ */
+function initializeInputSystem() {
+  console.log('Initializing HW6 input system...');
+  
+  // Remove old keyboard event listener if it exists
+  document.removeEventListener('keydown', handleKeyDown);
+  
+  // Add new comprehensive keyboard event listeners
+  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keyup', handleKeyUp);
+  
+  // Prevent arrow keys from scrolling the page
+  window.addEventListener('keydown', function(event) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+      event.preventDefault();
+    }
+  });
+  
+  console.log('Input system initialized successfully');
+  console.log('Available controls:');
+  console.log('- Arrow Keys: Move basketball (when implemented)');
+  console.log('- W/S: Adjust shot power');
+  console.log('- Spacebar: Shoot basketball (when implemented)');
+  console.log('- R: Reset basketball position');
+  console.log('- O: Toggle orbit camera');
+}
+
+// ============================================================================
+// END OF PHASE 1 INPUT SYSTEM
+// ============================================================================
+
 // Initialize all scene elements
 createBasketballCourt();
 createBasketballHoop(-15); // Left hoop
 createBasketballHoop(15);  // Right hoop
-createBasketball();
+basketballGroup = createBasketball();  // Store reference for manipulation
 
 // Position camera for optimal initial view of the court
 const cameraTranslate = new THREE.Matrix4();
@@ -534,19 +829,14 @@ instructionsElement.style.textAlign = 'left';
 ;
 document.body.appendChild(instructionsElement);
 
-// Handle keyboard input for camera controls
-function handleKeyDown(e) {
-  if (e.key === "o") {
-    // Toggle orbit camera controls on/off
-    isOrbitEnabled = !isOrbitEnabled;
-  }
-}
 
-document.addEventListener('keydown', handleKeyDown);
 
 // Main animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  // Process input every frame (NEW)
+  processInput();
   
   // Update orbit controls based on current state
   controls.enabled = isOrbitEnabled;
@@ -555,6 +845,9 @@ function animate() {
   // Render the scene
   renderer.render(scene, camera);
 }
+
+// Initialize HW6 input system
+initializeInputSystem();
 
 // Start the animation loop
 animate();
