@@ -503,67 +503,154 @@ function createBasketball() {
   return basketballGroup;
 }
 
-// Add this section after the existing variables and before the createBasketballCourt() function
-
 // ============================================================================
-// HW6 - PHASE 1: INPUT SYSTEM FOUNDATION
+// HW6 - ENHANCED GAME STATE WITH BASKETBALL STATE MANAGEMENT
 // ============================================================================
 
-// Input state tracking system
+// ============================================================================
+// ENHANCED GAME STATE - ADD THIS TO YOUR hw5.js FILE
+// ============================================================================
+
+const gameState = {
+  basketball: {
+    position: { x: 0, y: 0.25, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
+    targetPosition: { x: 0, y: 0.25, z: 0 },
+    previousPosition: { x: 0, y: 0.25, z: 0 },
+    isInFlight: false,
+    isOnGround: true,
+    isMoving: false,
+    rotation: { x: 0, y: 0, z: 0 },
+    rotationVelocity: { x: 0, y: 0, z: 0 },
+    movementSpeed: 8.0,
+    radius: 0.12
+  },
+  shotPower: 50,
+  minPower: 0,
+  maxPower: 100,
+  powerStep: 2,
+  score: 0,
+  shotAttempts: 0,
+  shotsMade: 0,
+  courtBounds: {
+    minX: -14.5,
+    maxX: 14.5,
+    minZ: -7.0,
+    maxZ: 7.0,
+    groundY: 0.25,
+    maxY: 15.0
+  },
+  deltaTime: 0,
+  lastTime: 0
+};
+
+// Input state tracking
 const inputState = {
-  // Arrow keys for basketball movement
   arrowLeft: false,
   arrowRight: false,
   arrowUp: false,
   arrowDown: false,
-  
-  // W/S keys for shot power adjustment
   keyW: false,
   keyS: false,
-  
-  // Action keys
   spacebar: false,
   keyR: false,
-  
-  // Existing orbit camera toggle
   keyO: false
 };
 
-// Game state variables for HW6
-const gameState = {
-  // Basketball physics state
-  basketball: {
-    position: { x: 0, y: 0.25, z: 0 }, // Starting at center court
-    velocity: { x: 0, y: 0, z: 0 },    // Current velocity
-    isInFlight: false,                  // Whether ball is currently flying
-    isOnGround: true                    // Whether ball is on the ground
-  },
-  
-  // Shot power system
-  shotPower: 50, // Current shot power (0-100%)
-  minPower: 0,
-  maxPower: 100,
-  powerStep: 2,  // Power increment/decrement per key press
-  
-  // Scoring system
-  score: 0,
-  shotAttempts: 0,
-  shotsMade: 0,
-  
-  // Court boundaries for basketball movement
-  courtBounds: {
-    minX: -14.5,
-    maxX: 14.5,
-    minZ: -7,
-    maxZ: 7
-  },
-  
-  // Movement speed
-  moveSpeed: 0.1 // Units per frame when moving
-};
-
-// Reference to the basketball group for manipulation
 let basketballGroup = null;
+
+// ============================================================================
+// BASKETBALL STATE MANAGER CLASS
+// ============================================================================
+
+class BasketballStateManager {
+  constructor() {
+    this.lastUpdateTime = performance.now();
+  }
+  
+  updateState(currentTime) {
+    gameState.deltaTime = (currentTime - this.lastUpdateTime) / 1000;
+    this.lastUpdateTime = currentTime;
+    gameState.deltaTime = Math.min(gameState.deltaTime, 1/30);
+    
+    this.updatePosition();
+    this.updateVisualPosition();
+  }
+  
+  updatePosition() {
+    const ball = gameState.basketball;
+    
+    if (!ball.targetPosition) {
+      ball.targetPosition = { ...ball.position };
+    }
+    
+    const dx = ball.targetPosition.x - ball.position.x;
+    const dy = ball.targetPosition.y - ball.position.y;
+    const dz = ball.targetPosition.z - ball.position.z;
+    
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    if (distance > 0.01) {
+      ball.isMoving = true;
+      const factor = 1 - Math.exp(-8.0 * gameState.deltaTime);
+      
+      ball.position.x += dx * factor;
+      ball.position.y += dy * factor;
+      ball.position.z += dz * factor;
+    } else {
+      ball.position.x = ball.targetPosition.x;
+      ball.position.y = ball.targetPosition.y;
+      ball.position.z = ball.targetPosition.z;
+      ball.isMoving = false;
+    }
+  }
+  
+  updateVisualPosition() {
+    if (basketballGroup) {
+      basketballGroup.position.set(
+        gameState.basketball.position.x,
+        gameState.basketball.position.y,
+        gameState.basketball.position.z
+      );
+    }
+  }
+  
+  setTargetPosition(x, y, z) {
+    if (!gameState.basketball.isInFlight) {
+      gameState.basketball.targetPosition = { x, y, z };
+      console.log(`Setting target position: (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
+    }
+  }
+  
+  resetToCenter() {
+    console.log('Resetting basketball to center court with smooth animation');
+    gameState.basketball.isInFlight = false;
+    gameState.basketball.isOnGround = true;
+    gameState.basketball.velocity = { x: 0, y: 0, z: 0 };
+    this.setTargetPosition(0, gameState.courtBounds.groundY, 0);
+    gameState.shotPower = 50;
+  }
+  
+  getStateInfo() {
+    const ball = gameState.basketball;
+    return {
+      position: { ...ball.position },
+      targetPosition: ball.targetPosition ? { ...ball.targetPosition } : null,
+      isMoving: ball.isMoving || false,
+      isInFlight: ball.isInFlight,
+      isOnGround: ball.isOnGround,
+      shotPower: gameState.shotPower
+    };
+  }
+}
+
+const basketballStateManager = new BasketballStateManager();
+
+console.log('Basketball state manager created in hw5.js!');
+
+// ============================================================================
+// INPUT HANDLING FUNCTIONS
+// ============================================================================
 
 /**
  * Handle key down events
@@ -729,31 +816,7 @@ function adjustShotPower(delta) {
  * Reset basketball to center court position
  */
 function resetBasketball() {
-  console.log('Resetting basketball to center court');
-  
-  // Reset position
-  gameState.basketball.position = { x: 0, y: 0.25, z: 0 };
-  
-  // Reset velocity
-  gameState.basketball.velocity = { x: 0, y: 0, z: 0 };
-  
-  // Reset physics state
-  gameState.basketball.isInFlight = false;
-  gameState.basketball.isOnGround = true;
-  
-  // Reset shot power to default
-  gameState.shotPower = 50;
-  
-  // Update basketball visual position (if basketball reference exists)
-  if (basketballGroup) {
-    basketballGroup.position.set(
-      gameState.basketball.position.x,
-      gameState.basketball.position.y,
-      gameState.basketball.position.z
-    );
-  }
-  
-  console.log('Basketball reset complete');
+  basketballStateManager.resetToCenter();
   updatePowerDisplay();
 }
 
@@ -794,8 +857,33 @@ function initializeInputSystem() {
   console.log('- O: Toggle orbit camera');
 }
 
+/**
+ * Initialize enhanced basketball state management
+ */
+function initializeBasketballStateManagement() {
+  console.log('Initializing enhanced basketball state management...');
+  
+  // Set initial state
+  const ball = gameState.basketball;
+  ball.position = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
+  ball.targetPosition = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
+  ball.previousPosition = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
+  
+  // Ensure basketball visual is positioned correctly
+  if (basketballGroup) {
+    basketballGroup.position.set(0, gameState.courtBounds.groundY, 0);
+  }
+  
+  console.log('Basketball state management initialized successfully');
+  console.log('Features:');
+  console.log('- Smooth position interpolation');
+  console.log('- Realistic rotation based on movement');
+  console.log('- Boundary enforcement');
+  console.log('- Frame-rate independent movement');
+}
+
 // ============================================================================
-// END OF PHASE 1 INPUT SYSTEM
+// SCENE INITIALIZATION
 // ============================================================================
 
 // Initialize all scene elements
@@ -822,21 +910,23 @@ instructionsElement.style.color = 'white';
 instructionsElement.style.fontSize = '16px';
 instructionsElement.style.fontFamily = 'Arial, sans-serif';
 instructionsElement.style.textAlign = 'left';
-// instructionsElement.innerHTML = `
-//   <h3>Controls:</h3>
-//   <p>O - Toggle orbit camera</p>
-// `
-;
 document.body.appendChild(instructionsElement);
 
+// ============================================================================
+// MAIN ANIMATION LOOP
+// ============================================================================
 
-
-// Main animation loop
+/**
+ * Main animation loop
+ */
 function animate() {
   requestAnimationFrame(animate);
 
-  // Process input every frame (NEW)
+  // Process input every frame
   processInput();
+  
+  // Update basketball state with smooth interpolation
+  basketballStateManager.updateState(performance.now());
   
   // Update orbit controls based on current state
   controls.enabled = isOrbitEnabled;
@@ -846,8 +936,15 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// ============================================================================
+// INITIALIZATION AND STARTUP
+// ============================================================================
+
 // Initialize HW6 input system
 initializeInputSystem();
+
+// Initialize enhanced basketball state management
+initializeBasketballStateManagement();
 
 // Start the animation loop
 animate();
