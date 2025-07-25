@@ -1048,23 +1048,24 @@ class HoopDetector {
     
     // Convert power to velocity multiplier
     const powerMultiplier = 0.4 + (power / 100) * 0.6; // Range: 0.4 to 1.0
-    const baseVelocity = 18; // Base shot velocity
+    const baseVelocity = 25; // Base shot velocity
     const totalVelocity = baseVelocity * powerMultiplier;
     
     // Calculate optimal angle for basketball shot (accounting for arc)
     const gravity = Math.abs(PHYSICS_CONFIG.scaledGravity);
-    const arcHeight = 2.0; // Extra height for nice arc
+    const arcHeight = 100.0; // Extra height for nice arc
     const targetHeight = dy + arcHeight;
     
     // Calculate launch angle using physics
     let launchAngle;
     const discriminant = Math.pow(totalVelocity, 4) - gravity * (gravity * horizontalDistance * horizontalDistance + 2 * targetHeight * totalVelocity * totalVelocity);
     
-    if (discriminant >= 0) {
-      launchAngle = Math.atan((totalVelocity * totalVelocity + Math.sqrt(discriminant)) / (gravity * horizontalDistance));
+    if (horizontalDistance < 4.0) {
+    // For close shots, use a steeper angle (50-60 degrees) for proper arc
+    launchAngle = Math.PI / 3 + (Math.PI / 12); // ~55-60 degrees
     } else {
-      // Fallback angle if physics calculation fails
-      launchAngle = Math.PI / 4; // 45 degrees
+      // For longer shots, use standard calculation
+      launchAngle = Math.PI / 4 + (horizontalDistance / 30) * (Math.PI / 6); // Adjust angle based on distance
     }
     
     // Calculate velocity components
