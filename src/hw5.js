@@ -504,7 +504,7 @@ function createBasketball() {
 }
 
 // ============================================================================
-// HW6 - ENHANCED GAME STATE WITH BASKETBALL STATE MANAGEMENT
+// HW6 - ENHANCED GAME STATE WITH COMPREHENSIVE SCORING SYSTEM
 // ============================================================================
 
 const gameState = {
@@ -526,9 +526,15 @@ const gameState = {
   maxPower: 100,
   powerStep: 1,
   lastPowerAdjustment: 0,
+  
+  // Enhanced scoring system
   score: 0,
   shotAttempts: 0,
   shotsMade: 0,
+  lastShotResult: null,
+  consecutiveShots: 0,
+  bestStreak: 0,
+  
   courtBounds: {
     minX: -14.5,
     maxX: 14.5,
@@ -555,6 +561,233 @@ const inputState = {
 };
 
 let basketballGroup = null;
+
+// ============================================================================
+// COMPREHENSIVE SCORING SYSTEM
+// ============================================================================
+
+class ScoringSystem {
+  constructor() {
+    this.pointsPerShot = 2;
+    this.bonusPoints = {
+      swish: 1,      // Extra point for clean shots
+      streak3: 2,    // Bonus for 3 consecutive shots
+      streak5: 5,    // Bonus for 5 consecutive shots
+      longShot: 3    // Bonus for shots from far away
+    };
+  }
+  
+  /**
+   * Process a successful shot and update statistics
+   * @param {Object} shotData - Information about the shot
+   */
+  processSuccessfulShot(shotData) {
+    const { type, distance, hoop } = shotData;
+    
+    // Update basic statistics
+    gameState.shotsMade++;
+    gameState.consecutiveShots++;
+    gameState.lastShotResult = 'made';
+    
+    // Calculate points for this shot
+    let points = this.pointsPerShot;
+    let bonusReason = '';
+    
+    // Swish bonus
+    if (type === 'swish') {
+      points += this.bonusPoints.swish;
+      bonusReason = 'SWISH! +1 Bonus';
+    }
+    
+    // Distance bonus for long shots
+    if (distance > 20) {
+      points += this.bonusPoints.longShot;
+      bonusReason += (bonusReason ? ' | ' : '') + 'Long Shot! +3 Bonus';
+    }
+    
+    // Streak bonuses
+    if (gameState.consecutiveShots === 3) {
+      points += this.bonusPoints.streak3;
+      bonusReason += (bonusReason ? ' | ' : '') + '3 in a Row! +2 Bonus';
+    } else if (gameState.consecutiveShots === 5) {
+      points += this.bonusPoints.streak5;
+      bonusReason += (bonusReason ? ' | ' : '') + '5 Streak! +5 Bonus';
+    } else if (gameState.consecutiveShots > 5 && gameState.consecutiveShots % 5 === 0) {
+      points += this.bonusPoints.streak5;
+      bonusReason += (bonusReason ? ' | ' : '') + `${gameState.consecutiveShots} Streak! +5 Bonus`;
+    }
+    
+    // Update score
+    gameState.score += points;
+    
+    // Update best streak
+    if (gameState.consecutiveShots > gameState.bestStreak) {
+      gameState.bestStreak = gameState.consecutiveShots;
+    }
+    
+    // Show success message
+    this.showShotResult('success', {
+      type,
+      points,
+      bonusReason,
+      streak: gameState.consecutiveShots,
+      hoop: hoop.id
+    });
+    
+    console.log(`SHOT MADE! +${points} points (${bonusReason || 'Standard shot'})`);
+    console.log(`Current streak: ${gameState.consecutiveShots}`);
+    
+    return points;
+  }
+  
+  /**
+   * Process a missed shot
+   * @param {Object} shotData - Information about the missed shot
+   */
+  processMissedShot(shotData) {
+    gameState.consecutiveShots = 0;
+    gameState.lastShotResult = 'missed';
+    
+    this.showShotResult('miss', {
+      distance: shotData.distance || 0
+    });
+    
+    console.log('Shot missed - streak reset');
+  }
+  
+  /**
+   * Show visual feedback for shot results
+   * @param {string} result - 'success' or 'miss'
+   * @param {Object} data - Additional data about the shot
+   */
+  showShotResult(result, data) {
+    const statusElement = document.getElementById('game-status');
+    if (!statusElement) return;
+    
+    // Clear existing classes
+    statusElement.className = '';
+    statusElement.classList.add('show');
+    
+    if (result === 'success') {
+      const { type, points, bonusReason, streak, hoop } = data;
+      
+      if (type === 'swish') {
+        statusElement.classList.add('swish');
+        statusElement.innerHTML = `🎯 SWISH! +${points} Points<br><small>${bonusReason}</small>`;
+      } else {
+        statusElement.classList.add('shot-made');
+        statusElement.innerHTML = `🏀 SHOT MADE! +${points} Points<br><small>${bonusReason || `Through ${hoop} hoop`}</small>`;
+      }
+      
+      // Add celebration animation to score display
+      const scoreDisplay = document.getElementById('score-display');
+      if (scoreDisplay) {
+        scoreDisplay.classList.add('celebrate');
+        setTimeout(() => scoreDisplay.classList.remove('celebrate'), 600);
+      }
+      
+    } else {
+      statusElement.classList.add('shot-missed');
+      statusElement.innerHTML = `❌ MISSED SHOT<br><small>Keep trying!</small>`;
+    }
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      statusElement.classList.remove('show');
+    }, 3000);
+    
+    // Update all UI displays
+    this.updateUI();
+  }
+  
+  /**
+   * Update all scoring-related UI elements
+   */
+  updateUI() {
+    // Update score
+    const scoreElement = document.getElementById('current-score');
+    if (scoreElement) {
+      scoreElement.textContent = gameState.score;
+    }
+    
+    // Update shots made
+    const shotsMadeElement = document.getElementById('shots-made');
+    if (shotsMadeElement) {
+      shotsMadeElement.textContent = gameState.shotsMade;
+    }
+    
+    // Update shot attempts
+    const attemptsElement = document.getElementById('shot-attempts');
+    if (attemptsElement) {
+      attemptsElement.textContent = gameState.shotAttempts;
+    }
+    
+    // Update and style shooting accuracy
+    const accuracyElement = document.getElementById('shooting-accuracy');
+    if (accuracyElement) {
+      const accuracy = gameState.shotAttempts > 0 ? 
+        Math.round((gameState.shotsMade / gameState.shotAttempts) * 100) : 0;
+      
+      accuracyElement.textContent = `${accuracy}%`;
+      
+      // Update accuracy styling based on percentage
+      accuracyElement.className = 'stat-value accuracy-value';
+      if (accuracy >= 70) {
+        accuracyElement.classList.add('high');
+      } else if (accuracy >= 40) {
+        accuracyElement.classList.add('medium');
+      } else {
+        accuracyElement.classList.add('low');
+      }
+    }
+    
+    console.log(`UI Updated - Score: ${gameState.score}, Made: ${gameState.shotsMade}/${gameState.shotAttempts}`);
+  }
+  
+  /**
+   * Get current shooting statistics
+   * @returns {Object} Current statistics
+   */
+  getStatistics() {
+    const accuracy = gameState.shotAttempts > 0 ? 
+      (gameState.shotsMade / gameState.shotAttempts) * 100 : 0;
+    
+    return {
+      score: gameState.score,
+      shotAttempts: gameState.shotAttempts,
+      shotsMade: gameState.shotsMade,
+      accuracy: Math.round(accuracy * 10) / 10, // Round to 1 decimal
+      currentStreak: gameState.consecutiveShots,
+      bestStreak: gameState.bestStreak,
+      lastResult: gameState.lastShotResult
+    };
+  }
+  
+  /**
+   * Reset all statistics
+   */
+  resetStatistics() {
+    gameState.score = 0;
+    gameState.shotAttempts = 0;
+    gameState.shotsMade = 0;
+    gameState.consecutiveShots = 0;
+    gameState.bestStreak = 0;
+    gameState.lastShotResult = null;
+    
+    this.updateUI();
+    
+    // Clear status message
+    const statusElement = document.getElementById('game-status');
+    if (statusElement) {
+      statusElement.classList.remove('show');
+    }
+    
+    console.log('All statistics reset');
+  }
+}
+
+// Create global scoring system instance
+const scoringSystem = new ScoringSystem();
 
 // ============================================================================
 // BASKETBALL STATE MANAGER CLASS
@@ -641,60 +874,34 @@ class BasketballStateManager {
     gameState.basketball.rotation = { x: 0, y: 0, z: 0 };
     this.setTargetPosition(0, gameState.courtBounds.groundY, 0);
     gameState.shotPower = 50;
-  }
-  
-  getStateInfo() {
-    const ball = gameState.basketball;
-    return {
-      position: { ...ball.position },
-      targetPosition: ball.targetPosition ? { ...ball.targetPosition } : null,
-      isMoving: ball.isMoving || false,
-      isInFlight: ball.isInFlight,
-      isOnGround: ball.isOnGround,
-      shotPower: gameState.shotPower,
-      velocity: { ...ball.velocity }
-    };
+    updatePowerDisplay();
   }
 }
 
 const basketballStateManager = new BasketballStateManager();
 
-console.log('Basketball state manager created in hw5.js!');
-
 // ============================================================================
-// PHASE 3: SHOT POWER SYSTEM FUNCTIONS
+// SHOT POWER SYSTEM FUNCTIONS
 // ============================================================================
 
-/**
- * Enhanced shot power adjustment with visual feedback
- * @param {number} delta - Amount to change power by (positive or negative)
- */
 function adjustShotPower(delta) {
   const oldPower = gameState.shotPower;
   gameState.shotPower = Math.max(gameState.minPower, 
                                 Math.min(gameState.maxPower, 
                                         gameState.shotPower + delta));
   
-  // Only log and update UI if power actually changed
   if (gameState.shotPower !== oldPower) {
     console.log(`Shot power adjusted: ${oldPower} -> ${gameState.shotPower}%`);
     updatePowerDisplay();
-    
-    // Visual feedback for power changes
     showPowerChangeMessage(gameState.shotPower > oldPower ? 'increase' : 'decrease');
   }
 }
 
-/**
- * Update power display in UI with real-time visual indicator
- */
 function updatePowerDisplay() {
-  // Update the existing power display element
   const powerElement = document.getElementById('power-indicator');
   if (powerElement) {
     powerElement.textContent = `${gameState.shotPower}%`;
     
-    // Add visual styling based on power level
     powerElement.className = 'power-value';
     if (gameState.shotPower < 25) {
       powerElement.classList.add('power-low');
@@ -705,29 +912,21 @@ function updatePowerDisplay() {
     }
   }
   
-  // Update power bar visual
   const powerBar = document.getElementById('power-bar-fill');
   if (powerBar) {
     const percentage = (gameState.shotPower / gameState.maxPower) * 100;
     powerBar.style.width = `${percentage}%`;
     
-    // Change color based on power level
     if (gameState.shotPower < 25) {
-      powerBar.style.backgroundColor = '#ff4444'; // Red for low power
+      powerBar.style.backgroundColor = '#ff4444';
     } else if (gameState.shotPower > 75) {
-      powerBar.style.backgroundColor = '#44ff44'; // Green for high power
+      powerBar.style.backgroundColor = '#44ff44';
     } else {
-      powerBar.style.backgroundColor = '#ffaa00'; // Orange for medium power
+      powerBar.style.backgroundColor = '#ffaa00';
     }
   }
-  
-  console.log(`Power display updated: ${gameState.shotPower}%`);
 }
 
-/**
- * Show temporary visual feedback for power changes
- * @param {string} direction - 'increase' or 'decrease'
- */
 function showPowerChangeMessage(direction) {
   const messageElement = document.getElementById('power-change-message');
   if (messageElement) {
@@ -735,96 +934,14 @@ function showPowerChangeMessage(direction) {
     messageElement.className = `power-change-message ${direction}`;
     messageElement.style.opacity = '1';
     
-    // Fade out after a short delay
     setTimeout(() => {
       messageElement.style.opacity = '0';
     }, 500);
   }
 }
 
-/**
- * Create enhanced power indicator UI elements
- * Call this function during initialization
- */
-function createPowerIndicatorUI() {
-  console.log('Creating enhanced power indicator UI...');
-  
-  // Find the controls display panel
-  const controlsDisplay = document.getElementById('controls-display');
-  if (!controlsDisplay) {
-    console.error('Controls display element not found!');
-    return;
-  }
-  
-  // Create power control section
-  const powerSection = document.createElement('div');
-  powerSection.className = 'control-section power-section';
-  powerSection.innerHTML = `
-    <div class="control-section-title">Shot Power</div>
-    <div class="power-display">
-      <div class="power-bar-container">
-        <div class="power-bar-background">
-          <div id="power-bar-fill" class="power-bar-fill"></div>
-        </div>
-        <div class="power-percentage">
-          <span id="power-indicator" class="power-value">${gameState.shotPower}%</span>
-        </div>
-      </div>
-      <div class="power-controls">
-        <div class="control-group">
-          <span class="control-key">W</span>
-          <span class="control-description">Increase power</span>
-        </div>
-        <div class="control-group">
-          <span class="control-key">S</span>
-          <span class="control-description">Decrease power</span>
-        </div>
-      </div>
-      <div id="power-change-message" class="power-change-message"></div>
-    </div>
-  `;
-  
-  // Insert power section at the beginning of controls (after camera section)
-  const cameraSection = controlsDisplay.querySelector('.control-section:first-child');
-  if (cameraSection && cameraSection.nextSibling) {
-    controlsDisplay.insertBefore(powerSection, cameraSection.nextSibling);
-  } else {
-    controlsDisplay.appendChild(powerSection);
-  }
-  
-  // Enable the W/S controls (remove disabled state)
-  const basketballActions = controlsDisplay.querySelector('.control-section.control-disabled');
-  if (basketballActions) {
-    // Check if this section contains W/S keys
-    const hasWKey = basketballActions.innerHTML.includes('>W<');
-    const hasSKey = basketballActions.innerHTML.includes('>S<');
-    
-    if (hasWKey || hasSKey) {
-      // Remove disabled class only from W/S controls within this section
-      const controlGroups = basketballActions.querySelectorAll('.control-group');
-      controlGroups.forEach(group => {
-        const keyElement = group.querySelector('.control-key');
-        if (keyElement && (keyElement.textContent === 'W' || keyElement.textContent === 'S')) {
-          group.classList.remove('control-disabled');
-          group.style.opacity = '1';
-        }
-      });
-    }
-  }
-  
-  // Initialize power display
-  updatePowerDisplay();
-  
-  console.log('Power indicator UI created successfully');
-}
-
-/**
- * Enhanced power adjustment processing with smooth power changes
- * Replace the existing power adjustment logic in processInput()
- */
 function processEnhancedPowerInput() {
-  // Shot power adjustment with rate limiting for smooth control
-  const powerAdjustmentRate = 60; // Adjustments per second
+  const powerAdjustmentRate = 60;
   const timeSinceLastAdjustment = performance.now() - (gameState.lastPowerAdjustment || 0);
   const adjustmentInterval = 1000 / powerAdjustmentRate;
   
@@ -840,96 +957,52 @@ function processEnhancedPowerInput() {
   }
 }
 
-/**
- * Initialize the complete Phase 3 power system
- * Call this function after your existing initialization
- */
-function initializePowerSystem() {
-  console.log('Initializing Phase 3: Shot Power System...');
-  
-  // Add missing properties to gameState if they don't exist
-  if (!gameState.hasOwnProperty('lastPowerAdjustment')) {
-    gameState.lastPowerAdjustment = 0;
-  }
-  
-  // Create the power indicator UI
-  createPowerIndicatorUI();
-  
-  console.log('Phase 3: Shot Power System initialized successfully!');
-  console.log('Features implemented:');
-  console.log('- W/S keys for smooth power adjustment');
-  console.log('- Real-time visual power indicator');
-  console.log('- Power bar with color coding');
-  console.log('- Visual feedback for power changes');
-}
-
 // ============================================================================
-// PHASE 4: PHYSICS ENGINE IMPLEMENTATION
-// Add this code to your hw5.js file after the existing Phase 3 code
+// PHYSICS ENGINE IMPLEMENTATION
 // ============================================================================
 
-// Physics constants and configuration
 const PHYSICS_CONFIG = {
-  gravity: -9.8,        // Gravity acceleration (m/s²)
-  scaledGravity: -19.6, // Scaled for the scene (2x for more dramatic effect)
-  groundFriction: 0.8,  // Friction when ball is on ground
-  airResistance: 0.99,  // Air resistance multiplier (0.99 = 1% resistance)
-  bounceDamping: 0.7,   // Energy loss on bounce (0.7 = 30% energy loss)
-  minBounceVelocity: 1.0, // Minimum velocity to trigger bounce
-  restingThreshold: 0.1,   // Velocity below which ball is considered at rest
-  rimRadius: 0.23,          // Basketball rim radius
-  rimTolerance: 0.05,       // How close ball needs to be to rim center
-  scoreHeight: 4.3          // Minimum height for valid score (below rim)
+  gravity: -9.8,
+  scaledGravity: -19.6,
+  groundFriction: 0.8,
+  airResistance: 0.99,
+  bounceDamping: 0.7,
+  minBounceVelocity: 1.0,
+  restingThreshold: 0.1,
+  rimRadius: 0.23,
+  rimTolerance: 0.05,
+  scoreHeight: 4.3
 };
 
-// Enhanced game state for physics
 const physicsState = {
   isPhysicsActive: false,
-  groundLevel: 0.25,     // Y coordinate of ground + ball radius
-  timeScale: 1.0,        // For slow motion effects if needed
-  lastCollisionTime: 0,  // Prevent collision spam
-  debugMode: false       // For physics debugging
+  groundLevel: 0.25,
+  timeScale: 1.0,
+  lastCollisionTime: 0,
+  debugMode: false
 };
 
-// Collision detection system
 class CollisionDetector {
   constructor() {
     this.ballRadius = gameState.basketball.radius;
     this.courtBounds = gameState.courtBounds;
   }
   
-  /**
-   * Check collision with ground
-   * @param {Object} position - Current ball position
-   * @param {Object} velocity - Current ball velocity
-   * @returns {Object} Collision result with isColliding and normal
-   */
   checkGroundCollision(position, velocity) {
     const collision = {
       isColliding: false,
-      normal: { x: 0, y: 1, z: 0 }, // Ground normal points up
+      normal: { x: 0, y: 1, z: 0 },
       penetration: 0
     };
     
-    // Check if ball is at or below ground level
     if (position.y <= physicsState.groundLevel) {
       collision.isColliding = true;
       collision.penetration = physicsState.groundLevel - position.y;
-      
-      if (physicsState.debugMode) {
-        console.log(`Ground collision detected at y=${position.y.toFixed(3)}, penetration=${collision.penetration.toFixed(3)}`);
-      }
     }
     
     return collision;
   }
   
-  /**
-   * Check collision with court boundaries (walls)
-   * @param {Object} position - Current ball position
-   * @param {Object} velocity - Current ball velocity
-   * @returns {Object} Collision result
-   */
   checkBoundaryCollision(position, velocity) {
     const collision = {
       isColliding: false,
@@ -940,51 +1013,37 @@ class CollisionDetector {
     const bounds = this.courtBounds;
     const radius = this.ballRadius;
     
-    // Check X boundaries (left/right walls)
     if (position.x - radius <= bounds.minX) {
       collision.isColliding = true;
-      collision.normal = { x: 1, y: 0, z: 0 }; // Normal points right
+      collision.normal = { x: 1, y: 0, z: 0 };
       collision.penetration = bounds.minX - (position.x - radius);
     } else if (position.x + radius >= bounds.maxX) {
       collision.isColliding = true;
-      collision.normal = { x: -1, y: 0, z: 0 }; // Normal points left
+      collision.normal = { x: -1, y: 0, z: 0 };
       collision.penetration = (position.x + radius) - bounds.maxX;
     }
     
-    // Check Z boundaries (front/back walls)
     if (position.z - radius <= bounds.minZ) {
       collision.isColliding = true;
-      collision.normal = { x: 0, y: 0, z: 1 }; // Normal points forward
+      collision.normal = { x: 0, y: 0, z: 1 };
       collision.penetration = bounds.minZ - (position.z - radius);
     } else if (position.z + radius >= bounds.maxZ) {
       collision.isColliding = true;
-      collision.normal = { x: 0, y: 0, z: -1 }; // Normal points backward
+      collision.normal = { x: 0, y: 0, z: -1 };
       collision.penetration = (position.z + radius) - bounds.maxZ;
-    }
-    
-    if (collision.isColliding && physicsState.debugMode) {
-      console.log(`Boundary collision detected at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
     }
     
     return collision;
   }
   
-  /**
-   * Check all collision types
-   * @param {Object} position - Current ball position
-   * @param {Object} velocity - Current ball velocity
-   * @returns {Array} Array of collision results
-   */
   checkAllCollisions(position, velocity) {
     const collisions = [];
     
-    // Check ground collision
     const groundCollision = this.checkGroundCollision(position, velocity);
     if (groundCollision.isColliding) {
       collisions.push({ type: 'ground', ...groundCollision });
     }
     
-    // Check boundary collisions
     const boundaryCollision = this.checkBoundaryCollision(position, velocity);
     if (boundaryCollision.isColliding) {
       collisions.push({ type: 'boundary', ...boundaryCollision });
@@ -994,23 +1053,14 @@ class CollisionDetector {
   }
 }
 
-/**
- * Hoop detection and trajectory calculation system
- */
 class HoopDetector {
   constructor() {
-    // Define hoop positions (matching your createBasketballHoop positions)
     this.hoops = [
-      { id: 'left', position: { x: -13.7, y: 4.5, z: 0 } },   // Left hoop
-      { id: 'right', position: { x: 13.7, y: 4.5, z: 0 } }    // Right hoop
+      { id: 'left', position: { x: -13.7, y: 4.5, z: 0 } },
+      { id: 'right', position: { x: 13.7, y: 4.5, z: 0 } }
     ];
   }
   
-  /**
-   * Find the nearest hoop to the basketball
-   * @param {Object} ballPosition - Current ball position
-   * @returns {Object} Nearest hoop data
-   */
   findNearestHoop(ballPosition) {
     let nearestHoop = null;
     let minDistance = Infinity;
@@ -1026,53 +1076,35 @@ class HoopDetector {
       }
     }
     
-    console.log(`Nearest hoop: ${nearestHoop.id} at distance ${nearestHoop.distance.toFixed(2)}`);
     return nearestHoop;
   }
   
-  /**
-   * Calculate shot angle toward nearest hoop
-   * @param {Object} ballPosition - Current ball position
-   * @param {Object} targetHoop - Target hoop data
-   * @param {number} power - Shot power (0-100)
-   * @returns {Object} Shot velocity vector
-   */
   calculateShotToHoop(ballPosition, targetHoop, power) {
     const target = targetHoop.position;
     
-    // Calculate distance and direction
     const dx = target.x - ballPosition.x;
     const dy = target.y - ballPosition.y;
     const dz = target.z - ballPosition.z;
     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
     
-    // Convert power to velocity multiplier
-    const powerMultiplier = 0.4 + (power / 100) * 0.6; // Range: 0.4 to 1.0
-    const baseVelocity = 25; // Base shot velocity
+    const powerMultiplier = 0.4 + (power / 100) * 0.6;
+    const baseVelocity = 25;
     const totalVelocity = baseVelocity * powerMultiplier;
     
-    // Calculate optimal angle for basketball shot (accounting for arc)
     const gravity = Math.abs(PHYSICS_CONFIG.scaledGravity);
-    const arcHeight = 100.0; // Extra height for nice arc
+    const arcHeight = 2.0;
     const targetHeight = dy + arcHeight;
     
-    // Calculate launch angle using physics
     let launchAngle;
-    const discriminant = Math.pow(totalVelocity, 4) - gravity * (gravity * horizontalDistance * horizontalDistance + 2 * targetHeight * totalVelocity * totalVelocity);
-    
     if (horizontalDistance < 4.0) {
-    // For close shots, use a steeper angle (50-60 degrees) for proper arc
-    launchAngle = Math.PI / 3 + (Math.PI / 12); // ~55-60 degrees
+      launchAngle = Math.PI / 3 + (Math.PI / 12);
     } else {
-      // For longer shots, use standard calculation
-      launchAngle = Math.PI / 4 + (horizontalDistance / 30) * (Math.PI / 6); // Adjust angle based on distance
+      launchAngle = Math.PI / 4 + (horizontalDistance / 30) * (Math.PI / 6);
     }
     
-    // Calculate velocity components
     const horizontalVel = totalVelocity * Math.cos(launchAngle);
     const verticalVel = totalVelocity * Math.sin(launchAngle);
     
-    // Direction vector for horizontal movement
     const direction = {
       x: dx / horizontalDistance,
       z: dz / horizontalDistance
@@ -1084,50 +1116,39 @@ class HoopDetector {
       z: direction.z * horizontalVel
     };
     
-    console.log(`Shot calculated - Power: ${power}%, Angle: ${(launchAngle * 180/Math.PI).toFixed(1)}°, Velocity:`, velocity);
     return velocity;
   }
   
-  /**
-   * Check if ball scored through rim
-   * @param {Object} ballPosition - Current ball position
-   * @param {Object} ballPrevPosition - Previous ball position
-   * @param {Object} ballVelocity - Current ball velocity
-   * @returns {Object} Score result
-   */
   checkScore(ballPosition, ballPrevPosition, ballVelocity) {
     const scoreResult = {
       scored: false,
       hoop: null,
-      type: 'miss'
+      type: 'miss',
+      distance: 0
     };
     
-    // Only check scoring if ball is moving downward (proper shot arc)
     if (ballVelocity.y >= 0) return scoreResult;
     
-    // Check each hoop
     for (const hoop of this.hoops) {
       const rimPos = hoop.position;
       
-      // Check if ball passed through rim horizontally
       const distanceToRim = Math.sqrt(
         Math.pow(ballPosition.x - rimPos.x, 2) + 
         Math.pow(ballPosition.z - rimPos.z, 2)
       );
       
-      // Check if ball is within rim radius
       if (distanceToRim <= PHYSICS_CONFIG.rimRadius + PHYSICS_CONFIG.rimTolerance) {
-        
-        // Check if ball crossed rim height (from above to below)
         const crossedRimHeight = ballPrevPosition.y > rimPos.y && ballPosition.y <= rimPos.y;
-        
-        // Check if ball is at reasonable scoring height
         const validHeight = ballPosition.y >= PHYSICS_CONFIG.scoreHeight;
         
         if (crossedRimHeight && validHeight) {
           scoreResult.scored = true;
           scoreResult.hoop = hoop;
           scoreResult.type = distanceToRim <= PHYSICS_CONFIG.rimRadius * 0.7 ? 'swish' : 'score';
+          scoreResult.distance = Math.sqrt(
+            Math.pow(rimPos.x - gameState.basketball.previousPosition.x, 2) +
+            Math.pow(rimPos.z - gameState.basketball.previousPosition.z, 2)
+          );
           
           console.log(`SCORE! Ball went through ${hoop.id} rim - Type: ${scoreResult.type}`);
           break;
@@ -1139,23 +1160,17 @@ class HoopDetector {
   }
 }
 
-// Physics engine class
 class BasketballPhysicsEngine {
   constructor() {
     this.collisionDetector = new CollisionDetector();
     this.isActive = false;
   }
   
-  /**
-   * Start physics simulation for the basketball
-   * @param {Object} initialVelocity - Starting velocity {x, y, z}
-   */
   startPhysics(initialVelocity) {
     console.log('Starting physics simulation with velocity:', initialVelocity);
     
     const ball = gameState.basketball;
     
-    // Set physics state
     ball.velocity = { ...initialVelocity };
     ball.isInFlight = true;
     ball.isOnGround = false;
@@ -1165,9 +1180,6 @@ class BasketballPhysicsEngine {
     console.log('Physics simulation started');
   }
   
-  /**
-   * Stop physics simulation
-   */
   stopPhysics() {
     const ball = gameState.basketball;
     
@@ -1180,58 +1192,39 @@ class BasketballPhysicsEngine {
     console.log('Physics simulation stopped');
   }
   
-  /**
-   * Apply gravity to the basketball
-   * @param {number} deltaTime - Time since last update
-   */
   applyGravity(deltaTime) {
     if (!physicsState.isPhysicsActive) return;
     
     const ball = gameState.basketball;
     
-    // Apply gravity to Y velocity
     ball.velocity.y += PHYSICS_CONFIG.scaledGravity * deltaTime;
     
-    // Apply air resistance to all velocity components
     const resistance = Math.pow(PHYSICS_CONFIG.airResistance, deltaTime * 60);
     ball.velocity.x *= resistance;
     ball.velocity.z *= resistance;
-    // Note: Don't apply air resistance to Y velocity as much (gravity dominates)
     ball.velocity.y *= Math.pow(0.995, deltaTime * 60);
   }
   
-  /**
-   * Update position based on velocity
-   * @param {number} deltaTime - Time since last update
-   */
   updatePosition(deltaTime) {
     if (!physicsState.isPhysicsActive) return;
     
     const ball = gameState.basketball;
     
-    // Store previous position for collision resolution
     ball.previousPosition = { ...ball.position };
     
-    // Update position using velocity (Euler integration)
     ball.position.x += ball.velocity.x * deltaTime;
     ball.position.y += ball.velocity.y * deltaTime;
     ball.position.z += ball.velocity.z * deltaTime;
     
-    // Update target position to match physics position
     ball.targetPosition = { ...ball.position };
   }
   
-  /**
-   * Handle collision response
-   * @param {Array} collisions - Array of collision data
-   */
   handleCollisions(collisions) {
     if (collisions.length === 0) return;
     
     const ball = gameState.basketball;
     const currentTime = performance.now();
     
-    // Prevent collision spam
     if (currentTime - physicsState.lastCollisionTime < 50) return;
     
     for (const collision of collisions) {
@@ -1241,52 +1234,40 @@ class BasketballPhysicsEngine {
     physicsState.lastCollisionTime = currentTime;
   }
   
-  /**
-   * Resolve a single collision
-   * @param {Object} collision - Collision data
-   */
   resolveCollision(collision) {
     const ball = gameState.basketball;
     const { normal, penetration, type } = collision;
     
-    // Move ball out of penetration
     if (penetration > 0) {
       ball.position.x += normal.x * penetration;
       ball.position.y += normal.y * penetration;
       ball.position.z += normal.z * penetration;
     }
     
-    // Calculate velocity reflection
     const dotProduct = ball.velocity.x * normal.x + 
                       ball.velocity.y * normal.y + 
                       ball.velocity.z * normal.z;
     
-    if (dotProduct < 0) { // Only reflect if moving toward surface
-      // Reflect velocity
+    if (dotProduct < 0) {
       ball.velocity.x -= 2 * dotProduct * normal.x;
       ball.velocity.y -= 2 * dotProduct * normal.y;
       ball.velocity.z -= 2 * dotProduct * normal.z;
       
-      // Apply bounce damping based on collision type
       let damping = PHYSICS_CONFIG.bounceDamping;
       
       if (type === 'ground') {
-        // More damping for ground bounces
         damping = PHYSICS_CONFIG.bounceDamping * 0.8;
         
-        // Set on ground if velocity is low enough
         if (Math.abs(ball.velocity.y) < PHYSICS_CONFIG.minBounceVelocity) {
           ball.velocity.y = 0;
           ball.position.y = physicsState.groundLevel;
           ball.isOnGround = true;
           
-          // Apply ground friction to horizontal movement
           ball.velocity.x *= PHYSICS_CONFIG.groundFriction;
           ball.velocity.z *= PHYSICS_CONFIG.groundFriction;
           
           console.log('Ball settled on ground');
           
-          // Check if ball should stop completely
           const horizontalSpeed = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.z ** 2);
           if (horizontalSpeed < PHYSICS_CONFIG.restingThreshold) {
             this.stopPhysics();
@@ -1295,34 +1276,24 @@ class BasketballPhysicsEngine {
         }
       }
       
-      // Apply damping to all velocity components
       ball.velocity.x *= damping;
       ball.velocity.y *= damping;
       ball.velocity.z *= damping;
-      
-      console.log(`${type} collision resolved, new velocity:`, ball.velocity);
     }
   }
   
-  /**
-   * Update basketball rotation based on velocity
-   * @param {number} deltaTime - Time since last update
-   */
   updateRotationFromVelocity(deltaTime) {
     if (!physicsState.isPhysicsActive) return;
     
     const ball = gameState.basketball;
-    const rotationFactor = 0.05; // Adjust for rotation speed
+    const rotationFactor = 0.05;
     
-    // Calculate rotation based on velocity
     ball.rotationVelocity.x = -ball.velocity.z * rotationFactor;
     ball.rotationVelocity.z = ball.velocity.x * rotationFactor;
     
-    // Apply rotation
     ball.rotation.x += ball.rotationVelocity.x * deltaTime;
     ball.rotation.z += ball.rotationVelocity.z * deltaTime;
     
-    // Update visual rotation
     if (basketballGroup) {
       basketballGroup.rotation.x = ball.rotation.x;
       basketballGroup.rotation.z = ball.rotation.z;
@@ -1330,300 +1301,89 @@ class BasketballPhysicsEngine {
     }
   }
   
-  /**
-   * Main physics update function
-   * @param {number} deltaTime - Time since last update
-   */
   update(deltaTime) {
-  if (!this.isActive) return;
-  
-  const ball = gameState.basketball;
-  
-  // Store previous position for scoring detection
-  const prevPosition = { ...ball.position };
-  
-  // Apply physics forces
-  this.applyGravity(deltaTime);
-  
-  // Update position
-  this.updatePosition(deltaTime);
-  
-  // Check for scoring BEFORE collision detection
-  const scoreResult = hoopDetector.checkScore(ball.position, prevPosition, ball.velocity);
-  if (scoreResult.scored) {
-    console.log(`BASKETBALL SCORE! Through ${scoreResult.hoop.id} hoop!`);
-  }
-  
-  // Check for collisions
-  const collisions = this.collisionDetector.checkAllCollisions(ball.position, ball.velocity);
-  
-  // Handle collisions
-  this.handleCollisions(collisions);
-  
-  // Update rotation
-  this.updateRotationFromVelocity(deltaTime);
-  
-  // Debug output
-  if (physicsState.debugMode && Math.random() < 0.1) {
-    console.log(`Physics update - Pos: (${ball.position.x.toFixed(2)}, ${ball.position.y.toFixed(2)}, ${ball.position.z.toFixed(2)}), Vel: (${ball.velocity.x.toFixed(2)}, ${ball.velocity.y.toFixed(2)}, ${ball.velocity.z.toFixed(2)})`);
-  }
-}
-  
-  /**
-   * Calculate trajectory for a shot
-   * @param {Object} startPos - Starting position
-   * @param {Object} targetPos - Target position (hoop)
-   * @param {number} power - Shot power (0-100)
-   * @returns {Object} Initial velocity vector
-   */
-  calculateTrajectory(startPos, targetPos, power) {
-    // Calculate distance and direction
-    const dx = targetPos.x - startPos.x;
-    const dy = targetPos.y - startPos.y;
-    const dz = targetPos.z - startPos.z;
-    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-    
-    // Convert power (0-100) to velocity multiplier
-    const powerMultiplier = 0.3 + (power / 100) * 0.7; // Range: 0.3 to 1.0
-    const baseVelocity = 20; // Base shot velocity
-    const totalVelocity = baseVelocity * powerMultiplier;
-    
-    // Calculate optimal angle for trajectory (45 degrees adjusted for target height)
-    const optimalAngle = Math.atan2(dy + 2, horizontalDistance) + Math.PI / 6; // Add arc
-    
-    // Calculate velocity components
-    const horizontalVel = totalVelocity * Math.cos(optimalAngle);
-    const verticalVel = totalVelocity * Math.sin(optimalAngle);
-    
-    // Direction vector for horizontal components
-    const direction = {
-      x: dx / horizontalDistance,
-      z: dz / horizontalDistance
-    };
-    
-    return {
-      x: direction.x * horizontalVel,
-      y: verticalVel,
-      z: direction.z * horizontalVel
-    };
-  }
-  
-  /**
-   * Test physics with a simple drop
-   */
-  testDrop() {
-    console.log('Testing physics with simple drop');
-    
-    // Position ball higher for testing
-    gameState.basketball.position.y = 5;
-    gameState.basketball.targetPosition.y = 5;
-    
-    // Start physics with zero horizontal velocity
-    this.startPhysics({ x: 0, y: 0, z: 0 });
-  }
-  
-  /**
-   * Test physics with a bounce
-   */
-  testBounce() {
-    console.log('Testing physics with bounce');
-    
-    // Position ball higher and give it some initial velocity
-    gameState.basketball.position.y = 3;
-    gameState.basketball.targetPosition.y = 3;
-    
-    // Start physics with downward and slight horizontal velocity
-    this.startPhysics({ x: 2, y: -5, z: 1 });
-  }
-
-  /**
-   * Test shooting toward nearest hoop
-   */
-  testShoot() {
-    console.log('Testing shoot toward nearest hoop');
+    if (!this.isActive) return;
     
     const ball = gameState.basketball;
-    const nearestHoop = hoopDetector.findNearestHoop(ball.position);
-    const shotVelocity = hoopDetector.calculateShotToHoop(ball.position, nearestHoop, gameState.shotPower);
+    const prevPosition = { ...ball.position };
     
-    this.startPhysics(shotVelocity);
+    this.applyGravity(deltaTime);
+    this.updatePosition(deltaTime);
+    
+    // Check for scoring
+    const scoreResult = hoopDetector.checkScore(ball.position, prevPosition, ball.velocity);
+    if (scoreResult.scored) {
+      console.log(`BASKETBALL SCORE! Through ${scoreResult.hoop.id} hoop!`);
+      scoringSystem.processSuccessfulShot({
+        type: scoreResult.type,
+        distance: scoreResult.distance,
+        hoop: scoreResult.hoop
+      });
+    }
+    
+    const collisions = this.collisionDetector.checkAllCollisions(ball.position, ball.velocity);
+    this.handleCollisions(collisions);
+    this.updateRotationFromVelocity(deltaTime);
   }
 }
 
-// Create global physics engine instance
 const basketballPhysics = new BasketballPhysicsEngine();
-
 const hoopDetector = new HoopDetector();
-
-
-// ============================================================================
-// INTEGRATION WITH EXISTING SYSTEMS
-// ============================================================================
-
-/**
- * Enhanced BasketballStateManager to include physics
- */
-class EnhancedBasketballStateManager extends BasketballStateManager {
-  updateState(currentTime) {
-    gameState.deltaTime = (currentTime - this.lastUpdateTime) / 1000;
-    this.lastUpdateTime = currentTime;
-    gameState.deltaTime = Math.min(gameState.deltaTime, 1/30);
-    
-    // Update physics if active
-    if (physicsState.isPhysicsActive) {
-      basketballPhysics.update(gameState.deltaTime);
-    } else {
-      // Use the original smooth movement when physics is not active
-      this.updatePosition();
-    }
-    
-    this.updateVisualPosition();
-  }
-  
-  startPhysics(initialVelocity) {
-    basketballPhysics.startPhysics(initialVelocity);
-  }
-  
-  stopPhysics() {
-    basketballPhysics.stopPhysics();
-  }
-}
-
-// ============================================================================
-// PHYSICS DEBUG CONTROLS
-// ============================================================================
-
-/**
- * Add physics debug controls
- */
-function initializePhysicsDebugControls() {
-  const originalHandleKeyDown = handleKeyDown;
-  
-  window.handleKeyDown = function(event) {
-    originalHandleKeyDown(event);
-    
-    switch (event.code) {
-      case 'KeyP':
-        console.log('P pressed - Testing physics drop');
-        basketballPhysics.testDrop();
-        break;
-      case 'KeyB':
-        console.log('B pressed - Testing physics bounce');
-        basketballPhysics.testBounce();
-        break;
-      case 'KeyT':  // NEW TEST
-        console.log('T pressed - Testing shoot toward hoop');
-        basketballPhysics.testShoot();
-        break;
-      case 'KeyG':
-        physicsState.debugMode = !physicsState.debugMode;
-        console.log('G pressed - Physics debug mode:', physicsState.debugMode);
-        break;
-    }
-  };
-  
-  document.removeEventListener('keydown', handleKeyDown);
-  document.addEventListener('keydown', window.handleKeyDown);
-}
-
-/**
- * Initialize Phase 4 physics system
- */
-function initializePhysicsEngine() {
-  console.log('Initializing Phase 4: Physics Engine...');
-  
-  // Replace the old state manager with enhanced version
-  // Note: You'll need to update the global reference in your main code
-  
-  // Initialize physics debug controls
-  initializePhysicsDebugControls();
-  
-  console.log('Phase 4: Physics Engine initialized successfully!');
-  console.log('Features implemented:');
-  console.log('- Gravity simulation with realistic acceleration');
-  console.log('- Ground and boundary collision detection');
-  console.log('- Bounce mechanics with energy loss');
-  console.log('- Rotation based on velocity');
-  console.log('- Air resistance and friction');
-  console.log('Debug controls:');
-  console.log('- P key: Test physics drop');
-  console.log('- B key: Test physics bounce');
-  console.log('- G key: Toggle debug mode');
-}
 
 // ============================================================================
 // INPUT HANDLING FUNCTIONS
 // ============================================================================
 
-/**
- * Handle key down events
- * @param {KeyboardEvent} event - The keyboard event
- */
 function handleKeyDown(event) {
-  // Prevent default browser behavior for game keys
   const gameKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', ' ', 'KeyR', 'KeyO'];
   if (gameKeys.includes(event.code) || gameKeys.includes(event.key)) {
     event.preventDefault();
   }
   
-  // Update input state based on key pressed
   switch (event.code) {
-    // Arrow keys for basketball movement
     case 'ArrowLeft':
       inputState.arrowLeft = true;
-      console.log('Arrow Left pressed - Move ball left');
       break;
     case 'ArrowRight':
       inputState.arrowRight = true;
-      console.log('Arrow Right pressed - Move ball right');
       break;
     case 'ArrowUp':
       inputState.arrowUp = true;
-      console.log('Arrow Up pressed - Move ball forward');
       break;
     case 'ArrowDown':
       inputState.arrowDown = true;
-      console.log('Arrow Down pressed - Move ball backward');
       break;
-    
-    // W/S keys for shot power adjustment
     case 'KeyW':
       inputState.keyW = true;
-      console.log('W pressed - Increase shot power');
       break;
     case 'KeyS':
       inputState.keyS = true;
-      console.log('S pressed - Decrease shot power');
       break;
-    
-    // Action keys
     case 'Space':
       inputState.spacebar = true;
-      console.log('Spacebar pressed - Shoot basketball');
       break;
     case 'KeyR':
       inputState.keyR = true;
-      console.log('R pressed - Reset basketball position');
       break;
-    
-    // Camera toggle (existing functionality)
     case 'KeyO':
       inputState.keyO = true;
-      // Toggle orbit camera controls on/off
       isOrbitEnabled = !isOrbitEnabled;
       console.log('O pressed - Toggle orbit camera:', isOrbitEnabled);
+      break;
+    // Debug controls
+    case 'KeyG':
+      physicsState.debugMode = !physicsState.debugMode;
+      console.log('G pressed - Physics debug mode:', physicsState.debugMode);
+      break;
+    case 'KeyP':
+      console.log('P pressed - Testing physics drop');
+      basketballPhysics.testDrop?.();
       break;
   }
 }
 
-/**
- * Handle key up events
- * @param {KeyboardEvent} event - The keyboard event
- */
 function handleKeyUp(event) {
-  // Update input state based on key released
   switch (event.code) {
-    // Arrow keys for basketball movement
     case 'ArrowLeft':
       inputState.arrowLeft = false;
       break;
@@ -1636,49 +1396,32 @@ function handleKeyUp(event) {
     case 'ArrowDown':
       inputState.arrowDown = false;
       break;
-    
-    // W/S keys for shot power adjustment
     case 'KeyW':
       inputState.keyW = false;
       break;
     case 'KeyS':
       inputState.keyS = false;
       break;
-    
-    // Action keys
     case 'Space':
       inputState.spacebar = false;
       break;
     case 'KeyR':
       inputState.keyR = false;
       break;
-    
-    // Camera toggle
     case 'KeyO':
       inputState.keyO = false;
       break;
   }
 }
 
-/**
- * Process continuous input (called every frame)
- * This handles keys that should trigger continuous actions while held down
- */
 function processInput() {
-  // Only process input if basketball is not currently in flight
   if (!gameState.basketball.isInFlight) {
-    
-    // Basketball movement (continuous while keys are held)
     if (inputState.arrowLeft || inputState.arrowRight || 
         inputState.arrowUp || inputState.arrowDown) {
       
-      console.log('Processing basketball movement input');
-      
-      // Calculate movement delta based on frame time for smooth movement
       const movementSpeed = gameState.basketball.movementSpeed;
       const deltaMovement = movementSpeed * gameState.deltaTime;
       
-      // Get current target position (or current position if no target set)
       let newX = gameState.basketball.targetPosition ? 
                  gameState.basketball.targetPosition.x : 
                  gameState.basketball.position.x;
@@ -1686,86 +1429,66 @@ function processInput() {
                  gameState.basketball.targetPosition.z : 
                  gameState.basketball.position.z;
       
-      // Apply movement based on input
-      if (inputState.arrowLeft) {
-        newX -= deltaMovement;
-        console.log(`Moving left: newX = ${newX.toFixed(2)}`);
-      }
-      if (inputState.arrowRight) {
-        newX += deltaMovement;
-        console.log(`Moving right: newX = ${newX.toFixed(2)}`);
-      }
-      if (inputState.arrowUp) {
-        newZ -= deltaMovement; // Negative Z is forward on the court
-        console.log(`Moving forward: newZ = ${newZ.toFixed(2)}`);
-      }
-      if (inputState.arrowDown) {
-        newZ += deltaMovement; // Positive Z is backward on the court
-        console.log(`Moving backward: newZ = ${newZ.toFixed(2)}`);
-      }
+      if (inputState.arrowLeft) newX -= deltaMovement;
+      if (inputState.arrowRight) newX += deltaMovement;
+      if (inputState.arrowUp) newZ -= deltaMovement;
+      if (inputState.arrowDown) newZ += deltaMovement;
       
-      // Apply boundary checking to keep ball on court
       const bounds = gameState.courtBounds;
       newX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
       newZ = Math.max(bounds.minZ, Math.min(bounds.maxZ, newZ));
       
-      // Set the new target position (using ground Y coordinate)
       basketballStateManager.setTargetPosition(newX, bounds.groundY, newZ);
-      
-      // Add rotation animation based on movement direction
       updateBasketballRotation(inputState);
     }
     
-    // Enhanced power adjustment with rate limiting
     processEnhancedPowerInput();
   }
   
   if (inputState.spacebar) {
-  console.log('Processing shoot action');
-  inputState.spacebar = false;
-  
-  // ADD THIS LOGIC:
-  if (!gameState.basketball.isInFlight) {
-    // Find nearest hoop
-    const nearestHoop = hoopDetector.findNearestHoop(gameState.basketball.position);
+    console.log('Processing shoot action');
+    inputState.spacebar = false;
     
-    // Calculate shot trajectory
-    const shotVelocity = hoopDetector.calculateShotToHoop(
-      gameState.basketball.position, 
-      nearestHoop, 
-      gameState.shotPower
-    );
-    
-    // Start physics simulation
-    basketballPhysics.startPhysics(shotVelocity);
-    
-    // Increment shot attempts
-    gameState.shotAttempts++;
-    
-    // // Update UI
-    // updateShotStatistics();
+    if (!gameState.basketball.isInFlight) {
+      // Increment shot attempts first
+      gameState.shotAttempts++;
+      
+      const nearestHoop = hoopDetector.findNearestHoop(gameState.basketball.position);
+      const shotVelocity = hoopDetector.calculateShotToHoop(
+        gameState.basketball.position, 
+        nearestHoop, 
+        gameState.shotPower
+      );
+      
+      basketballPhysics.startPhysics(shotVelocity);
+      
+      // Start checking for missed shots after a delay
+      setTimeout(() => {
+        if (!gameState.basketball.isInFlight && gameState.lastShotResult !== 'made') {
+          // Shot missed - ball has settled without scoring
+          scoringSystem.processMissedShot({
+            distance: nearestHoop.distance
+          });
+        }
+      }, 5000); // Check after 5 seconds
+      
+      scoringSystem.updateUI();
+    }
   }
-}
   
   if (inputState.keyR) {
     console.log('Processing reset action');
-    inputState.keyR = false; // Reset to prevent continuous resets
+    inputState.keyR = false;
     resetBasketball();
   }
 }
 
-/**
- * Update basketball rotation based on movement direction
- * This creates realistic ball rolling animation
- * @param {Object} input - Current input state
- */
 function updateBasketballRotation(input) {
   if (!basketballGroup) return;
   
   const ball = gameState.basketball;
-  const rotationSpeed = 0.1; // Adjust this value to control rotation speed
+  const rotationSpeed = 0.1;
   
-  // Calculate rotation based on movement direction
   if (input.arrowLeft) {
     ball.rotation.z -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
   }
@@ -1779,36 +1502,27 @@ function updateBasketballRotation(input) {
     ball.rotation.x -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
   }
   
-  // Apply rotation to the basketball visual
   basketballGroup.rotation.x = ball.rotation.x;
   basketballGroup.rotation.z = ball.rotation.z;
-  
-  // Maintain the original Y rotation for visual appeal
   basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
 }
 
-/**
- * Reset basketball to center court position
- */
 function resetBasketball() {
   basketballStateManager.resetToCenter();
   updatePowerDisplay();
 }
 
-/**
- * Initialize input system
- */
+// ============================================================================
+// INITIALIZATION FUNCTIONS
+// ============================================================================
+
 function initializeInputSystem() {
   console.log('Initializing HW6 input system...');
   
-  // Remove old keyboard event listener if it exists
   document.removeEventListener('keydown', handleKeyDown);
-  
-  // Add new comprehensive keyboard event listeners
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
   
-  // Prevent arrow keys from scrolling the page
   window.addEventListener('keydown', function(event) {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
       event.preventDefault();
@@ -1816,55 +1530,33 @@ function initializeInputSystem() {
   });
   
   console.log('Input system initialized successfully');
-  console.log('Available controls:');
-  console.log('- Arrow Keys: Move basketball');
-  console.log('- W/S: Adjust shot power');
-  console.log('- Spacebar: Shoot basketball (when implemented)');
-  console.log('- R: Reset basketball position');
-  console.log('- O: Toggle orbit camera');
 }
 
-/**
- * Initialize enhanced basketball state management
- */
-function initializeBasketballStateManagement() {
-  console.log('Initializing enhanced basketball state management...');
+function initializeUI() {
+  console.log('Initializing HW6 UI system...');
   
-  // Set initial state
-  const ball = gameState.basketball;
-  ball.position = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
-  ball.targetPosition = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
-  ball.previousPosition = { x: 0, y: gameState.courtBounds.groundY, z: 0 };
+  // Initialize power display
+  updatePowerDisplay();
   
-  // Ensure basketball visual is positioned correctly
-  if (basketballGroup) {
-    basketballGroup.position.set(0, gameState.courtBounds.groundY, 0);
-  }
+  // Initialize scoring display
+  scoringSystem.updateUI();
   
-  console.log('Basketball state management initialized successfully');
-  console.log('Features:');
-  console.log('- Smooth position interpolation');
-  console.log('- Realistic rotation based on movement');
-  console.log('- Boundary enforcement');
-  console.log('- Frame-rate independent movement');
+  console.log('UI system initialized successfully');
 }
 
 // ============================================================================
 // SCENE INITIALIZATION
 // ============================================================================
 
-// Initialize all scene elements
 createBasketballCourt();
-createBasketballHoop(-15); // Left hoop
-createBasketballHoop(15);  // Right hoop
-basketballGroup = createBasketball();  // Store reference for manipulation
+createBasketballHoop(-15);
+createBasketballHoop(15);
+basketballGroup = createBasketball();
 
-// Position camera for optimal initial view of the court
 const cameraTranslate = new THREE.Matrix4();
 cameraTranslate.makeTranslation(0, 15, 30);
 camera.applyMatrix4(cameraTranslate);
 
-// Set up orbit controls for interactive camera movement
 const controls = new OrbitControls(camera, renderer.domElement);
 let isOrbitEnabled = true;
 
@@ -1872,19 +1564,13 @@ let isOrbitEnabled = true;
 // MAIN ANIMATION LOOP
 // ============================================================================
 
-/**
- * Main animation loop
- */
 function animate() {
   requestAnimationFrame(animate);
 
-  // Process input every frame
   processInput();
   
-  // Update basketball state with physics support
   if (physicsState.isPhysicsActive) {
     basketballPhysics.update(gameState.deltaTime);
-    // Update visual position directly from physics
     if (basketballGroup) {
       basketballGroup.position.set(
         gameState.basketball.position.x,
@@ -1893,15 +1579,12 @@ function animate() {
       );
     }
   } else {
-    // Use smooth interpolation when physics is not active
     basketballStateManager.updateState(performance.now());
   }
   
-  // Update orbit controls
   controls.enabled = isOrbitEnabled;
   controls.update();
   
-  // Render the scene
   renderer.render(scene, camera);
 }
 
@@ -1909,17 +1592,29 @@ function animate() {
 // INITIALIZATION AND STARTUP
 // ============================================================================
 
-// Initialize HW6 input system
+// Handle window resize
+window.addEventListener('resize', function() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initialize all systems
 initializeInputSystem();
-
-// Initialize enhanced basketball state management
-initializeBasketballStateManagement();
-
-// Initialize power system
-initializePowerSystem();
-
-// Initialize physics engine
-initializePhysicsEngine();
+initializeUI();
 
 // Start the animation loop
 animate();
+
+// console.log('HW6 Basketball Shooting Game fully initialized!');
+// console.log('Features implemented:');
+// console.log('✅ Interactive basketball movement (Arrow keys)');
+// console.log('✅ Shot power system (W/S keys)');
+// console.log('✅ Physics-based shooting (Spacebar)');
+// console.log('✅ Comprehensive scoring system');
+// console.log('✅ Real-time statistics tracking');
+// console.log('✅ Visual feedback for shots');
+// console.log('✅ Basketball rotation animations');
+// console.log('✅ Reset functionality (R key)');
+// console.log('✅ Camera controls (O key)');
+// console.log('Game ready to play!');

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Basketball Court - HW5</title>
+    <title>Basketball Court - HW6</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         /* Basic reset for consistent styling across browsers */
@@ -50,41 +50,101 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            min-width: 300px;
+            min-width: 400px;
             text-align: center;
         }
 
         #score-display h2 {
             color: #ff6600; /* Basketball orange theme */
             font-size: 18px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
 
-        .score-board {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
+        .score-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
         }
 
-        .team-score {
-            flex: 1;
+        .stat-item {
             text-align: center;
-            font-size: 16px;
-            font-weight: bold;
         }
 
-        .score-separator {
+        .stat-label {
+            font-size: 12px;
+            color: #ccc;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
             font-size: 20px;
+            font-weight: bold;
             color: #ff6600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .accuracy-value {
+            color: #44ff44;
+        }
+
+        .accuracy-value.low {
+            color: #ff4444;
+        }
+
+        .accuracy-value.medium {
+            color: #ffaa00;
+        }
+
+        .accuracy-value.high {
+            color: #44ff44;
+        }
+
+        /* Game status message */
+        #game-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-status.show {
+            opacity: 1;
+        }
+
+        #game-status.shot-made {
+            background: rgba(68, 255, 68, 0.3);
+            border: 2px solid #44ff44;
+            color: #44ff44;
+        }
+
+        #game-status.shot-missed {
+            background: rgba(255, 68, 68, 0.3);
+            border: 2px solid #ff4444;
+            color: #ff4444;
+        }
+
+        #game-status.swish {
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid #ffd700;
+            color: #ffd700;
         }
 
         /* Controls display positioned at bottom left */
         #controls-display {
             bottom: 20px;
             left: 20px;
-            min-width: 300px;
+            min-width: 320px;
         }
 
         #controls-display h3 {
@@ -146,28 +206,9 @@
             color: #666;
         }
 
-        /* Mobile responsive adjustments */
-        @media (max-width: 768px) {
-            .ui-panel {
-                padding: 10px;
-                font-size: 12px;
-            }
-            
-            #score-display {
-                min-width: 250px;
-            }
-            
-            .score-board {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            #controls-display {
-                min-width: 250px;
-            }
-        }
+        /* Power section styling */
         .power-section {
-            border-left: 5px solid #ff6600 !important; /* Basketball orange theme */
+            border-left: 5px solid #ff6600 !important;
             background-color: rgba(255, 102, 0, 0.1);
             margin-bottom: 15px;
         }
@@ -195,10 +236,10 @@
 
         .power-bar-fill {
             height: 100%;
-            background-color: #ffaa00; /* Default orange color */
+            background-color: #ffaa00;
             border-radius: 9px;
             transition: width 0.2s ease, background-color 0.2s ease;
-            width: 50%; /* Default 50% power */
+            width: 50%;
         }
 
         .power-percentage {
@@ -214,15 +255,15 @@
         }
 
         .power-value.power-low {
-            color: #ff4444; /* Red for low power */
+            color: #ff4444;
         }
 
         .power-value.power-medium {
-            color: #ffaa00; /* Orange for medium power */
+            color: #ffaa00;
         }
 
         .power-value.power-high {
-            color: #44ff44; /* Green for high power */
+            color: #44ff44;
         }
 
         .power-controls {
@@ -242,14 +283,13 @@
         }
 
         .power-change-message.increase {
-            color: #44ff44; /* Green for increase */
+            color: #44ff44;
         }
 
         .power-change-message.decrease {
-            color: #ff4444; /* Red for decrease */
+            color: #ff4444;
         }
 
-        /* Enhanced control key styling for power controls */
         .power-section .control-key {
             background: rgba(255, 102, 0, 0.3);
             border: 1px solid #ff6600;
@@ -258,14 +298,26 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
 
-        .power-section .control-key:hover {
-            background: rgba(255, 102, 0, 0.5);
-            transform: scale(1.05);
-            transition: all 0.2s ease;
-        }
-
-        /* Responsive design for smaller screens */
+        /* Mobile responsive adjustments */
         @media (max-width: 768px) {
+            .ui-panel {
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            #score-display {
+                min-width: 300px;
+            }
+            
+            .score-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            #controls-display {
+                min-width: 280px;
+            }
+            
             .power-bar-container {
                 flex-direction: column;
                 gap: 8px;
@@ -273,10 +325,6 @@
             
             .power-bar-background {
                 width: 100%;
-            }
-            
-            .power-percentage {
-                align-self: center;
             }
         }
 
@@ -290,6 +338,19 @@
         .power-bar-fill.power-change {
             animation: powerPulse 0.3s ease;
         }
+
+        /* Celebration animation for scores */
+        @keyframes celebrate {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(2deg); }
+            50% { transform: scale(1.2) rotate(-2deg); }
+            75% { transform: scale(1.1) rotate(1deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .celebrate {
+            animation: celebrate 0.6s ease;
+        }
     </style>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>
 </head>
@@ -301,27 +362,39 @@
 
     <!-- UI overlay system for score and controls -->
     
-    <!-- Score display panel at top of screen -->
+    <!-- Enhanced score display panel at top of screen -->
     <div id="score-display" class="ui-overlay ui-panel">
-        <h2>🏀 Basketball Court</h2>
-        <div class="score-board">
-            <div class="team-score">
-                <div>Team A</div>
-                <div id="team-a-score">0</div>
+        <h2>🏀 Interactive Basketball Shooting Game</h2>
+        
+        <!-- Game statistics grid -->
+        <div class="score-stats">
+            <div class="stat-item">
+                <div class="stat-label">Score</div>
+                <div id="current-score" class="stat-value">0</div>
             </div>
-            <div class="score-separator">:</div>
-            <div class="team-score">
-                <div>Team B</div>
-                <div id="team-b-score">0</div>
+            <div class="stat-item">
+                <div class="stat-label">Shots Made</div>
+                <div id="shots-made" class="stat-value">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Attempts</div>
+                <div id="shot-attempts" class="stat-value">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Accuracy</div>
+                <div id="shooting-accuracy" class="stat-value accuracy-value">0%</div>
             </div>
         </div>
+        
+        <!-- Game status message area -->
+        <div id="game-status"></div>
     </div>
 
     <!-- Controls instruction panel at bottom left -->
     <div id="controls-display" class="ui-overlay ui-panel">
         <h3>🎮 Controls</h3>
         
-        <!-- Currently available camera controls -->
+        <!-- Camera controls -->
         <div class="control-section">
             <div class="control-section-title">Camera</div>
             <div class="control-group">
@@ -338,8 +411,8 @@
             </div>
         </div>
 
-        <!-- Basketball movement controls (to be implemented in HW6) -->
-        <div class="control-section control-disabled">
+        <!-- Basketball movement controls -->
+        <div class="control-section">
             <div class="control-section-title">Basketball Movement</div>
             <div class="control-group">
                 <span class="control-key">↑</span>
@@ -359,17 +432,35 @@
             </div>
         </div>
 
-        <!-- Basketball action controls (to be implemented in HW6) -->
-        <div class="control-section control-disabled">
+        <!-- Shot power controls -->
+        <div class="control-section power-section">
+            <div class="control-section-title">Shot Power</div>
+            <div class="power-display">
+                <div class="power-bar-container">
+                    <div class="power-bar-background">
+                        <div id="power-bar-fill" class="power-bar-fill"></div>
+                    </div>
+                    <div class="power-percentage">
+                        <span id="power-indicator" class="power-value">50%</span>
+                    </div>
+                </div>
+                <div class="power-controls">
+                    <div class="control-group">
+                        <span class="control-key">W</span>
+                        <span class="control-description">Increase power</span>
+                    </div>
+                    <div class="control-group">
+                        <span class="control-key">S</span>
+                        <span class="control-description">Decrease power</span>
+                    </div>
+                </div>
+                <div id="power-change-message" class="power-change-message"></div>
+            </div>
+        </div>
+
+        <!-- Basketball actions -->
+        <div class="control-section">
             <div class="control-section-title">Basketball Actions</div>
-            <div class="control-group">
-                <span class="control-key">W</span>
-                <span class="control-description">Dribble faster</span>
-            </div>
-            <div class="control-group">
-                <span class="control-key">S</span>
-                <span class="control-description">Dribble slower</span>
-            </div>
             <div class="control-group">
                 <span class="control-key">Space</span>
                 <span class="control-description">Shoot basketball</span>
