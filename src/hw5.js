@@ -1720,12 +1720,32 @@ function processInput() {
     processEnhancedPowerInput();
   }
   
-  // One-time actions (process once per key press)
   if (inputState.spacebar) {
-    console.log('Processing shoot action');
-    inputState.spacebar = false; // Reset to prevent continuous shooting
-    // Shooting logic will be implemented in Phase 5
+  console.log('Processing shoot action');
+  inputState.spacebar = false;
+  
+  // ADD THIS LOGIC:
+  if (!gameState.basketball.isInFlight) {
+    // Find nearest hoop
+    const nearestHoop = hoopDetector.findNearestHoop(gameState.basketball.position);
+    
+    // Calculate shot trajectory
+    const shotVelocity = hoopDetector.calculateShotToHoop(
+      gameState.basketball.position, 
+      nearestHoop, 
+      gameState.shotPower
+    );
+    
+    // Start physics simulation
+    basketballPhysics.startPhysics(shotVelocity);
+    
+    // Increment shot attempts
+    gameState.shotAttempts++;
+    
+    // // Update UI
+    // updateShotStatistics();
   }
+}
   
   if (inputState.keyR) {
     console.log('Processing reset action');
