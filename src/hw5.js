@@ -507,10 +507,6 @@ function createBasketball() {
 // HW6 - ENHANCED GAME STATE WITH BASKETBALL STATE MANAGEMENT
 // ============================================================================
 
-// ============================================================================
-// ENHANCED GAME STATE - ADD THIS TO YOUR hw5.js FILE
-// ============================================================================
-
 const gameState = {
   basketball: {
     position: { x: 0, y: 0.25, z: 0 },
@@ -528,7 +524,8 @@ const gameState = {
   shotPower: 50,
   minPower: 0,
   maxPower: 100,
-  powerStep: 2,
+  powerStep: 1,
+  lastPowerAdjustment: 0,
   score: 0,
   shotAttempts: 0,
   shotsMade: 0,
@@ -663,6 +660,208 @@ class BasketballStateManager {
 const basketballStateManager = new BasketballStateManager();
 
 console.log('Basketball state manager created in hw5.js!');
+
+// ============================================================================
+// PHASE 3: SHOT POWER SYSTEM FUNCTIONS
+// ============================================================================
+
+/**
+ * Enhanced shot power adjustment with visual feedback
+ * @param {number} delta - Amount to change power by (positive or negative)
+ */
+function adjustShotPower(delta) {
+  const oldPower = gameState.shotPower;
+  gameState.shotPower = Math.max(gameState.minPower, 
+                                Math.min(gameState.maxPower, 
+                                        gameState.shotPower + delta));
+  
+  // Only log and update UI if power actually changed
+  if (gameState.shotPower !== oldPower) {
+    console.log(`Shot power adjusted: ${oldPower} -> ${gameState.shotPower}%`);
+    updatePowerDisplay();
+    
+    // Visual feedback for power changes
+    showPowerChangeMessage(gameState.shotPower > oldPower ? 'increase' : 'decrease');
+  }
+}
+
+/**
+ * Update power display in UI with real-time visual indicator
+ */
+function updatePowerDisplay() {
+  // Update the existing power display element
+  const powerElement = document.getElementById('power-indicator');
+  if (powerElement) {
+    powerElement.textContent = `${gameState.shotPower}%`;
+    
+    // Add visual styling based on power level
+    powerElement.className = 'power-value';
+    if (gameState.shotPower < 25) {
+      powerElement.classList.add('power-low');
+    } else if (gameState.shotPower > 75) {
+      powerElement.classList.add('power-high');
+    } else {
+      powerElement.classList.add('power-medium');
+    }
+  }
+  
+  // Update power bar visual
+  const powerBar = document.getElementById('power-bar-fill');
+  if (powerBar) {
+    const percentage = (gameState.shotPower / gameState.maxPower) * 100;
+    powerBar.style.width = `${percentage}%`;
+    
+    // Change color based on power level
+    if (gameState.shotPower < 25) {
+      powerBar.style.backgroundColor = '#ff4444'; // Red for low power
+    } else if (gameState.shotPower > 75) {
+      powerBar.style.backgroundColor = '#44ff44'; // Green for high power
+    } else {
+      powerBar.style.backgroundColor = '#ffaa00'; // Orange for medium power
+    }
+  }
+  
+  console.log(`Power display updated: ${gameState.shotPower}%`);
+}
+
+/**
+ * Show temporary visual feedback for power changes
+ * @param {string} direction - 'increase' or 'decrease'
+ */
+function showPowerChangeMessage(direction) {
+  const messageElement = document.getElementById('power-change-message');
+  if (messageElement) {
+    messageElement.textContent = direction === 'increase' ? 'Power ↑' : 'Power ↓';
+    messageElement.className = `power-change-message ${direction}`;
+    messageElement.style.opacity = '1';
+    
+    // Fade out after a short delay
+    setTimeout(() => {
+      messageElement.style.opacity = '0';
+    }, 500);
+  }
+}
+
+/**
+ * Create enhanced power indicator UI elements
+ * Call this function during initialization
+ */
+function createPowerIndicatorUI() {
+  console.log('Creating enhanced power indicator UI...');
+  
+  // Find the controls display panel
+  const controlsDisplay = document.getElementById('controls-display');
+  if (!controlsDisplay) {
+    console.error('Controls display element not found!');
+    return;
+  }
+  
+  // Create power control section
+  const powerSection = document.createElement('div');
+  powerSection.className = 'control-section power-section';
+  powerSection.innerHTML = `
+    <div class="control-section-title">Shot Power</div>
+    <div class="power-display">
+      <div class="power-bar-container">
+        <div class="power-bar-background">
+          <div id="power-bar-fill" class="power-bar-fill"></div>
+        </div>
+        <div class="power-percentage">
+          <span id="power-indicator" class="power-value">${gameState.shotPower}%</span>
+        </div>
+      </div>
+      <div class="power-controls">
+        <div class="control-group">
+          <span class="control-key">W</span>
+          <span class="control-description">Increase power</span>
+        </div>
+        <div class="control-group">
+          <span class="control-key">S</span>
+          <span class="control-description">Decrease power</span>
+        </div>
+      </div>
+      <div id="power-change-message" class="power-change-message"></div>
+    </div>
+  `;
+  
+  // Insert power section at the beginning of controls (after camera section)
+  const cameraSection = controlsDisplay.querySelector('.control-section:first-child');
+  if (cameraSection && cameraSection.nextSibling) {
+    controlsDisplay.insertBefore(powerSection, cameraSection.nextSibling);
+  } else {
+    controlsDisplay.appendChild(powerSection);
+  }
+  
+  // Enable the W/S controls (remove disabled state)
+  const basketballActions = controlsDisplay.querySelector('.control-section.control-disabled');
+  if (basketballActions) {
+    // Check if this section contains W/S keys
+    const hasWKey = basketballActions.innerHTML.includes('>W<');
+    const hasSKey = basketballActions.innerHTML.includes('>S<');
+    
+    if (hasWKey || hasSKey) {
+      // Remove disabled class only from W/S controls within this section
+      const controlGroups = basketballActions.querySelectorAll('.control-group');
+      controlGroups.forEach(group => {
+        const keyElement = group.querySelector('.control-key');
+        if (keyElement && (keyElement.textContent === 'W' || keyElement.textContent === 'S')) {
+          group.classList.remove('control-disabled');
+          group.style.opacity = '1';
+        }
+      });
+    }
+  }
+  
+  // Initialize power display
+  updatePowerDisplay();
+  
+  console.log('Power indicator UI created successfully');
+}
+
+/**
+ * Enhanced power adjustment processing with smooth power changes
+ * Replace the existing power adjustment logic in processInput()
+ */
+function processEnhancedPowerInput() {
+  // Shot power adjustment with rate limiting for smooth control
+  const powerAdjustmentRate = 60; // Adjustments per second
+  const timeSinceLastAdjustment = performance.now() - (gameState.lastPowerAdjustment || 0);
+  const adjustmentInterval = 1000 / powerAdjustmentRate;
+  
+  if (timeSinceLastAdjustment >= adjustmentInterval) {
+    if (inputState.keyW) {
+      adjustShotPower(gameState.powerStep);
+      gameState.lastPowerAdjustment = performance.now();
+    }
+    if (inputState.keyS) {
+      adjustShotPower(-gameState.powerStep);
+      gameState.lastPowerAdjustment = performance.now();
+    }
+  }
+}
+
+/**
+ * Initialize the complete Phase 3 power system
+ * Call this function after your existing initialization
+ */
+function initializePowerSystem() {
+  console.log('Initializing Phase 3: Shot Power System...');
+  
+  // Add missing properties to gameState if they don't exist
+  if (!gameState.hasOwnProperty('lastPowerAdjustment')) {
+    gameState.lastPowerAdjustment = 0;
+  }
+  
+  // Create the power indicator UI
+  createPowerIndicatorUI();
+  
+  console.log('Phase 3: Shot Power System initialized successfully!');
+  console.log('Features implemented:');
+  console.log('- W/S keys for smooth power adjustment');
+  console.log('- Real-time visual power indicator');
+  console.log('- Power bar with color coding');
+  console.log('- Visual feedback for power changes');
+}
 
 // ============================================================================
 // INPUT HANDLING FUNCTIONS
@@ -829,13 +1028,8 @@ function processInput() {
       updateBasketballRotation(inputState);
     }
     
-    // Shot power adjustment (continuous while keys are held)
-    if (inputState.keyW) {
-      adjustShotPower(gameState.powerStep);
-    }
-    if (inputState.keyS) {
-      adjustShotPower(-gameState.powerStep);
-    }
+    // Enhanced power adjustment with rate limiting
+    processEnhancedPowerInput();
   }
   
   // One-time actions (process once per key press)
@@ -885,38 +1079,12 @@ function updateBasketballRotation(input) {
   basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
 }
 
-
-/**
- * Adjust shot power within valid range
- * @param {number} delta - Amount to change power by (positive or negative)
- */
-function adjustShotPower(delta) {
-  const oldPower = gameState.shotPower;
-  gameState.shotPower = Math.max(gameState.minPower, 
-                                Math.min(gameState.maxPower, 
-                                        gameState.shotPower + delta));
-  
-  // Only log if power actually changed
-  if (gameState.shotPower !== oldPower) {
-    console.log(`Shot power adjusted: ${oldPower} -> ${gameState.shotPower}%`);
-    updatePowerDisplay();
-  }
-}
-
 /**
  * Reset basketball to center court position
  */
 function resetBasketball() {
   basketballStateManager.resetToCenter();
   updatePowerDisplay();
-}
-
-/**
- * Update power display in UI (placeholder for now)
- */
-function updatePowerDisplay() {
-  // This will be enhanced in Phase 9 when we implement the full UI
-  console.log(`Current shot power: ${gameState.shotPower}%`);
 }
 
 /**
@@ -941,7 +1109,7 @@ function initializeInputSystem() {
   
   console.log('Input system initialized successfully');
   console.log('Available controls:');
-  console.log('- Arrow Keys: Move basketball (when implemented)');
+  console.log('- Arrow Keys: Move basketball');
   console.log('- W/S: Adjust shot power');
   console.log('- Spacebar: Shoot basketball (when implemented)');
   console.log('- R: Reset basketball position');
@@ -992,17 +1160,6 @@ camera.applyMatrix4(cameraTranslate);
 const controls = new OrbitControls(camera, renderer.domElement);
 let isOrbitEnabled = true;
 
-// Instructions display
-const instructionsElement = document.createElement('div');
-instructionsElement.style.position = 'absolute';
-instructionsElement.style.bottom = '20px';
-instructionsElement.style.left = '20px';
-instructionsElement.style.color = 'white';
-instructionsElement.style.fontSize = '16px';
-instructionsElement.style.fontFamily = 'Arial, sans-serif';
-instructionsElement.style.textAlign = 'left';
-document.body.appendChild(instructionsElement);
-
 // ============================================================================
 // MAIN ANIMATION LOOP
 // ============================================================================
@@ -1036,6 +1193,9 @@ initializeInputSystem();
 
 // Initialize enhanced basketball state management
 initializeBasketballStateManagement();
+
+// Initialize Phase 3 power system
+initializePowerSystem();
 
 // Start the animation loop
 animate();
