@@ -876,7 +876,10 @@ const PHYSICS_CONFIG = {
   airResistance: 0.99,  // Air resistance multiplier (0.99 = 1% resistance)
   bounceDamping: 0.7,   // Energy loss on bounce (0.7 = 30% energy loss)
   minBounceVelocity: 1.0, // Minimum velocity to trigger bounce
-  restingThreshold: 0.1   // Velocity below which ball is considered at rest
+  restingThreshold: 0.1,   // Velocity below which ball is considered at rest
+  rimRadius: 0.23,          // Basketball rim radius
+  rimTolerance: 0.05,       // How close ball needs to be to rim center
+  scoreHeight: 4.3          // Minimum height for valid score (below rim)
 };
 
 // Enhanced game state for physics
@@ -988,6 +991,150 @@ class CollisionDetector {
     }
     
     return collisions;
+  }
+}
+
+/**
+ * Hoop detection and trajectory calculation system
+ */
+class HoopDetector {
+  constructor() {
+    // Define hoop positions (matching your createBasketballHoop positions)
+    this.hoops = [
+      { id: 'left', position: { x: -13.7, y: 4.5, z: 0 } },   // Left hoop
+      { id: 'right', position: { x: 13.7, y: 4.5, z: 0 } }    // Right hoop
+    ];
+  }
+  
+  /**
+   * Find the nearest hoop to the basketball
+   * @param {Object} ballPosition - Current ball position
+   * @returns {Object} Nearest hoop data
+   */
+  findNearestHoop(ballPosition) {
+    let nearestHoop = null;
+    let minDistance = Infinity;
+    
+    for (const hoop of this.hoops) {
+      const dx = hoop.position.x - ballPosition.x;
+      const dz = hoop.position.z - ballPosition.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestHoop = { ...hoop, distance };
+      }
+    }
+    
+    console.log(`Nearest hoop: ${nearestHoop.id} at distance ${nearestHoop.distance.toFixed(2)}`);
+    return nearestHoop;
+  }
+  
+  /**
+   * Calculate shot angle toward nearest hoop
+   * @param {Object} ballPosition - Current ball position
+   * @param {Object} targetHoop - Target hoop data
+   * @param {number} power - Shot power (0-100)
+   * @returns {Object} Shot velocity vector
+   */
+  calculateShotToHoop(ballPosition, targetHoop, power) {
+    const target = targetHoop.position;
+    
+    // Calculate distance and direction
+    const dx = target.x - ballPosition.x;
+    const dy = target.y - ballPosition.y;
+    const dz = target.z - ballPosition.z;
+    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+    
+    // Convert power to velocity multiplier
+    const powerMultiplier = 0.4 + (power / 100) * 0.6; // Range: 0.4 to 1.0
+    const baseVelocity = 18; // Base shot velocity
+    const totalVelocity = baseVelocity * powerMultiplier;
+    
+    // Calculate optimal angle for basketball shot (accounting for arc)
+    const gravity = Math.abs(PHYSICS_CONFIG.scaledGravity);
+    const arcHeight = 2.0; // Extra height for nice arc
+    const targetHeight = dy + arcHeight;
+    
+    // Calculate launch angle using physics
+    let launchAngle;
+    const discriminant = Math.pow(totalVelocity, 4) - gravity * (gravity * horizontalDistance * horizontalDistance + 2 * targetHeight * totalVelocity * totalVelocity);
+    
+    if (discriminant >= 0) {
+      launchAngle = Math.atan((totalVelocity * totalVelocity + Math.sqrt(discriminant)) / (gravity * horizontalDistance));
+    } else {
+      // Fallback angle if physics calculation fails
+      launchAngle = Math.PI / 4; // 45 degrees
+    }
+    
+    // Calculate velocity components
+    const horizontalVel = totalVelocity * Math.cos(launchAngle);
+    const verticalVel = totalVelocity * Math.sin(launchAngle);
+    
+    // Direction vector for horizontal movement
+    const direction = {
+      x: dx / horizontalDistance,
+      z: dz / horizontalDistance
+    };
+    
+    const velocity = {
+      x: direction.x * horizontalVel,
+      y: verticalVel,
+      z: direction.z * horizontalVel
+    };
+    
+    console.log(`Shot calculated - Power: ${power}%, Angle: ${(launchAngle * 180/Math.PI).toFixed(1)}°, Velocity:`, velocity);
+    return velocity;
+  }
+  
+  /**
+   * Check if ball scored through rim
+   * @param {Object} ballPosition - Current ball position
+   * @param {Object} ballPrevPosition - Previous ball position
+   * @param {Object} ballVelocity - Current ball velocity
+   * @returns {Object} Score result
+   */
+  checkScore(ballPosition, ballPrevPosition, ballVelocity) {
+    const scoreResult = {
+      scored: false,
+      hoop: null,
+      type: 'miss'
+    };
+    
+    // Only check scoring if ball is moving downward (proper shot arc)
+    if (ballVelocity.y >= 0) return scoreResult;
+    
+    // Check each hoop
+    for (const hoop of this.hoops) {
+      const rimPos = hoop.position;
+      
+      // Check if ball passed through rim horizontally
+      const distanceToRim = Math.sqrt(
+        Math.pow(ballPosition.x - rimPos.x, 2) + 
+        Math.pow(ballPosition.z - rimPos.z, 2)
+      );
+      
+      // Check if ball is within rim radius
+      if (distanceToRim <= PHYSICS_CONFIG.rimRadius + PHYSICS_CONFIG.rimTolerance) {
+        
+        // Check if ball crossed rim height (from above to below)
+        const crossedRimHeight = ballPrevPosition.y > rimPos.y && ballPosition.y <= rimPos.y;
+        
+        // Check if ball is at reasonable scoring height
+        const validHeight = ballPosition.y >= PHYSICS_CONFIG.scoreHeight;
+        
+        if (crossedRimHeight && validHeight) {
+          scoreResult.scored = true;
+          scoreResult.hoop = hoop;
+          scoreResult.type = distanceToRim <= PHYSICS_CONFIG.rimRadius * 0.7 ? 'swish' : 'score';
+          
+          console.log(`SCORE! Ball went through ${hoop.id} rim - Type: ${scoreResult.type}`);
+          break;
+        }
+      }
+    }
+    
+    return scoreResult;
   }
 }
 
@@ -1187,32 +1334,39 @@ class BasketballPhysicsEngine {
    * @param {number} deltaTime - Time since last update
    */
   update(deltaTime) {
-    if (!this.isActive) return;
-    
-    // Apply physics forces
-    this.applyGravity(deltaTime);
-    
-    // Update position
-    this.updatePosition(deltaTime);
-    
-    // Check for collisions
-    const collisions = this.collisionDetector.checkAllCollisions(
-      gameState.basketball.position, 
-      gameState.basketball.velocity
-    );
-    
-    // Handle collisions
-    this.handleCollisions(collisions);
-    
-    // Update rotation
-    this.updateRotationFromVelocity(deltaTime);
-    
-    // Debug output
-    if (physicsState.debugMode && Math.random() < 0.1) { // 10% chance per frame
-      const ball = gameState.basketball;
-      console.log(`Physics update - Pos: (${ball.position.x.toFixed(2)}, ${ball.position.y.toFixed(2)}, ${ball.position.z.toFixed(2)}), Vel: (${ball.velocity.x.toFixed(2)}, ${ball.velocity.y.toFixed(2)}, ${ball.velocity.z.toFixed(2)})`);
-    }
+  if (!this.isActive) return;
+  
+  const ball = gameState.basketball;
+  
+  // Store previous position for scoring detection
+  const prevPosition = { ...ball.position };
+  
+  // Apply physics forces
+  this.applyGravity(deltaTime);
+  
+  // Update position
+  this.updatePosition(deltaTime);
+  
+  // Check for scoring BEFORE collision detection
+  const scoreResult = hoopDetector.checkScore(ball.position, prevPosition, ball.velocity);
+  if (scoreResult.scored) {
+    console.log(`BASKETBALL SCORE! Through ${scoreResult.hoop.id} hoop!`);
   }
+  
+  // Check for collisions
+  const collisions = this.collisionDetector.checkAllCollisions(ball.position, ball.velocity);
+  
+  // Handle collisions
+  this.handleCollisions(collisions);
+  
+  // Update rotation
+  this.updateRotationFromVelocity(deltaTime);
+  
+  // Debug output
+  if (physicsState.debugMode && Math.random() < 0.1) {
+    console.log(`Physics update - Pos: (${ball.position.x.toFixed(2)}, ${ball.position.y.toFixed(2)}, ${ball.position.z.toFixed(2)}), Vel: (${ball.velocity.x.toFixed(2)}, ${ball.velocity.y.toFixed(2)}, ${ball.velocity.z.toFixed(2)})`);
+  }
+}
   
   /**
    * Calculate trajectory for a shot
@@ -1280,10 +1434,26 @@ class BasketballPhysicsEngine {
     // Start physics with downward and slight horizontal velocity
     this.startPhysics({ x: 2, y: -5, z: 1 });
   }
+
+  /**
+   * Test shooting toward nearest hoop
+   */
+  testShoot() {
+    console.log('Testing shoot toward nearest hoop');
+    
+    const ball = gameState.basketball;
+    const nearestHoop = hoopDetector.findNearestHoop(ball.position);
+    const shotVelocity = hoopDetector.calculateShotToHoop(ball.position, nearestHoop, gameState.shotPower);
+    
+    this.startPhysics(shotVelocity);
+  }
 }
 
 // Create global physics engine instance
 const basketballPhysics = new BasketballPhysicsEngine();
+
+const hoopDetector = new HoopDetector();
+
 
 // ============================================================================
 // INTEGRATION WITH EXISTING SYSTEMS
@@ -1326,14 +1496,11 @@ class EnhancedBasketballStateManager extends BasketballStateManager {
  * Add physics debug controls
  */
 function initializePhysicsDebugControls() {
-  // Add debug key handlers to existing handleKeyDown function
   const originalHandleKeyDown = handleKeyDown;
   
   window.handleKeyDown = function(event) {
-    // Call original handler first
     originalHandleKeyDown(event);
     
-    // Add physics debug controls
     switch (event.code) {
       case 'KeyP':
         console.log('P pressed - Testing physics drop');
@@ -1343,6 +1510,10 @@ function initializePhysicsDebugControls() {
         console.log('B pressed - Testing physics bounce');
         basketballPhysics.testBounce();
         break;
+      case 'KeyT':  // NEW TEST
+        console.log('T pressed - Testing shoot toward hoop');
+        basketballPhysics.testShoot();
+        break;
       case 'KeyG':
         physicsState.debugMode = !physicsState.debugMode;
         console.log('G pressed - Physics debug mode:', physicsState.debugMode);
@@ -1350,7 +1521,6 @@ function initializePhysicsDebugControls() {
     }
   };
   
-  // Replace the old handler
   document.removeEventListener('keydown', handleKeyDown);
   document.addEventListener('keydown', window.handleKeyDown);
 }
