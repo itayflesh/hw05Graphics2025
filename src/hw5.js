@@ -594,14 +594,23 @@ class BasketballStateManager {
       ball.isMoving = true;
       const factor = 1 - Math.exp(-8.0 * gameState.deltaTime);
       
+      // Store previous position for movement calculations
+      ball.previousPosition = { ...ball.position };
+      
       ball.position.x += dx * factor;
       ball.position.y += dy * factor;
       ball.position.z += dz * factor;
+      
+      // Update velocity for future physics calculations
+      ball.velocity.x = (ball.position.x - ball.previousPosition.x) / gameState.deltaTime;
+      ball.velocity.z = (ball.position.z - ball.previousPosition.z) / gameState.deltaTime;
     } else {
       ball.position.x = ball.targetPosition.x;
       ball.position.y = ball.targetPosition.y;
       ball.position.z = ball.targetPosition.z;
       ball.isMoving = false;
+      ball.velocity.x = 0;
+      ball.velocity.z = 0;
     }
   }
   
@@ -617,6 +626,11 @@ class BasketballStateManager {
   
   setTargetPosition(x, y, z) {
     if (!gameState.basketball.isInFlight) {
+      // Validate position is within court bounds
+      const bounds = gameState.courtBounds;
+      x = Math.max(bounds.minX, Math.min(bounds.maxX, x));
+      z = Math.max(bounds.minZ, Math.min(bounds.maxZ, z));
+      
       gameState.basketball.targetPosition = { x, y, z };
       console.log(`Setting target position: (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
     }
@@ -627,6 +641,7 @@ class BasketballStateManager {
     gameState.basketball.isInFlight = false;
     gameState.basketball.isOnGround = true;
     gameState.basketball.velocity = { x: 0, y: 0, z: 0 };
+    gameState.basketball.rotation = { x: 0, y: 0, z: 0 };
     this.setTargetPosition(0, gameState.courtBounds.groundY, 0);
     gameState.shotPower = 50;
   }
@@ -639,7 +654,8 @@ class BasketballStateManager {
       isMoving: ball.isMoving || false,
       isInFlight: ball.isInFlight,
       isOnGround: ball.isOnGround,
-      shotPower: gameState.shotPower
+      shotPower: gameState.shotPower,
+      velocity: { ...ball.velocity }
     };
   }
 }
@@ -768,8 +784,49 @@ function processInput() {
     // Basketball movement (continuous while keys are held)
     if (inputState.arrowLeft || inputState.arrowRight || 
         inputState.arrowUp || inputState.arrowDown) {
+      
       console.log('Processing basketball movement input');
-      // Movement logic will be implemented in Phase 2
+      
+      // Calculate movement delta based on frame time for smooth movement
+      const movementSpeed = gameState.basketball.movementSpeed;
+      const deltaMovement = movementSpeed * gameState.deltaTime;
+      
+      // Get current target position (or current position if no target set)
+      let newX = gameState.basketball.targetPosition ? 
+                 gameState.basketball.targetPosition.x : 
+                 gameState.basketball.position.x;
+      let newZ = gameState.basketball.targetPosition ? 
+                 gameState.basketball.targetPosition.z : 
+                 gameState.basketball.position.z;
+      
+      // Apply movement based on input
+      if (inputState.arrowLeft) {
+        newX -= deltaMovement;
+        console.log(`Moving left: newX = ${newX.toFixed(2)}`);
+      }
+      if (inputState.arrowRight) {
+        newX += deltaMovement;
+        console.log(`Moving right: newX = ${newX.toFixed(2)}`);
+      }
+      if (inputState.arrowUp) {
+        newZ -= deltaMovement; // Negative Z is forward on the court
+        console.log(`Moving forward: newZ = ${newZ.toFixed(2)}`);
+      }
+      if (inputState.arrowDown) {
+        newZ += deltaMovement; // Positive Z is backward on the court
+        console.log(`Moving backward: newZ = ${newZ.toFixed(2)}`);
+      }
+      
+      // Apply boundary checking to keep ball on court
+      const bounds = gameState.courtBounds;
+      newX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
+      newZ = Math.max(bounds.minZ, Math.min(bounds.maxZ, newZ));
+      
+      // Set the new target position (using ground Y coordinate)
+      basketballStateManager.setTargetPosition(newX, bounds.groundY, newZ);
+      
+      // Add rotation animation based on movement direction
+      updateBasketballRotation(inputState);
     }
     
     // Shot power adjustment (continuous while keys are held)
@@ -794,6 +851,40 @@ function processInput() {
     resetBasketball();
   }
 }
+
+/**
+ * Update basketball rotation based on movement direction
+ * This creates realistic ball rolling animation
+ * @param {Object} input - Current input state
+ */
+function updateBasketballRotation(input) {
+  if (!basketballGroup) return;
+  
+  const ball = gameState.basketball;
+  const rotationSpeed = 0.1; // Adjust this value to control rotation speed
+  
+  // Calculate rotation based on movement direction
+  if (input.arrowLeft) {
+    ball.rotation.z -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
+  }
+  if (input.arrowRight) {
+    ball.rotation.z += rotationSpeed * gameState.deltaTime * ball.movementSpeed;
+  }
+  if (input.arrowUp) {
+    ball.rotation.x += rotationSpeed * gameState.deltaTime * ball.movementSpeed;
+  }
+  if (input.arrowDown) {
+    ball.rotation.x -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
+  }
+  
+  // Apply rotation to the basketball visual
+  basketballGroup.rotation.x = ball.rotation.x;
+  basketballGroup.rotation.z = ball.rotation.z;
+  
+  // Maintain the original Y rotation for visual appeal
+  basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
+}
+
 
 /**
  * Adjust shot power within valid range
