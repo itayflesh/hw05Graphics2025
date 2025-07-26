@@ -1855,26 +1855,39 @@ function updateBasketballRotation(input) {
   if (!basketballGroup) return;
   
   const ball = gameState.basketball;
-  const rotationSpeed = 3.0;
+  const ballRadius = 0.12;
   
-  if (input.arrowLeft) {
-    ball.rotation.z -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
+  // During flight, let physics handle rotation
+  if (ball.isInFlight) {
+    // Flight rotation is handled by updateRotationFromVelocity in physics engine
+    return;
   }
-  if (input.arrowRight) {
-    ball.rotation.z += rotationSpeed * gameState.deltaTime * ball.movementSpeed;
-  }
-  if (input.arrowUp) {
-    ball.rotation.x += rotationSpeed * gameState.deltaTime * ball.movementSpeed;
-  }
-  if (input.arrowDown) {
-    ball.rotation.x -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
-  }
-  ball.rotation.y += rotationSpeed * gameState.deltaTime * 0.5;
   
+  // Ground movement rotation (same as before but improved)
+  const actualVelocity = { x: 0, z: 0 };
+  
+  if (input.arrowLeft) actualVelocity.x = -ball.movementSpeed;
+  if (input.arrowRight) actualVelocity.x = ball.movementSpeed;
+  if (input.arrowUp) actualVelocity.z = -ball.movementSpeed;
+  if (input.arrowDown) actualVelocity.z = ball.movementSpeed;
+  
+  // Calculate rotation based on physics
+  const angularVelocityX = actualVelocity.z / ballRadius;
+  const angularVelocityZ = -actualVelocity.x / ballRadius;
+  
+  // Apply rotation
+  ball.rotation.x += angularVelocityX * gameState.deltaTime;
+  ball.rotation.z += angularVelocityZ * gameState.deltaTime;
+  
+  // Add slight Y-axis rotation for visual appeal
+  if (actualVelocity.x !== 0 || actualVelocity.z !== 0) {
+    ball.rotation.y += 0.5 * gameState.deltaTime;
+  }
+  
+  // Apply to mesh
   basketballGroup.rotation.x = ball.rotation.x;
   basketballGroup.rotation.z = ball.rotation.z;
   basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
-
 }
 
 function resetBasketball() {
