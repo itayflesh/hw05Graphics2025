@@ -654,10 +654,11 @@ class ScoringSystem {
     gameState.lastShotResult = 'missed';
     
     this.showShotResult('miss', {
-      distance: shotData.distance || 0
+      distance: shotData.distance || 0,
+      reason: shotData.reason || 'normal' // Add reason for different miss types
     });
     
-    console.log('Shot missed - streak reset');
+    console.log(`Shot missed (${shotData.reason || 'normal'}) - streak reset`);
   }
   
   /**
@@ -692,8 +693,20 @@ class ScoringSystem {
       }
       
     } else {
+      const { reason } = data;
       statusElement.classList.add('shot-missed');
-      statusElement.innerHTML = `❌ MISSED SHOT<br><small> Keep trying!</small>`;
+      
+      // Different messages based on miss reason
+      if (reason === 'out_of_bounds') {
+        statusElement.innerHTML = `❌ MISSED SHOT <br><small> Out of boundaries!</small>`;
+      } else if (reason === 'ball_settled') {
+        statusElement.innerHTML = `❌ MISSED SHOT <br><small> Keep trying!</small>`;
+      } else if (reason === 'timeout') {
+        statusElement.innerHTML = `❌ MISSED SHOT <br><small> Keep trying!</small>`;
+      } else {
+        // Default message for any other miss type
+        statusElement.innerHTML = `❌ MISSED SHOT <br><small> Keep trying!</small>`;
+      }
     }
     
     // Auto-hide after 3 seconds
@@ -1417,6 +1430,20 @@ class BasketballPhysicsEngine {
     ball.isOnGround = true;
     physicsState.isPhysicsActive = false;
     this.isActive = false;
+
+    // NEW: Check if this was a missed shot when physics stops
+    if (gameState.shotInProgress && !gameState.currentShotScored) {
+      // Ball has settled without scoring - process as missed shot
+      console.log('Ball settled on ground without scoring - processing as missed shot');
+      
+      const nearestHoop = hoopDetector.findNearestHoop(gameState.basketball.position);
+      scoringSystem.processMissedShot({
+        distance: nearestHoop ? nearestHoop.distance : 0,
+        reason: 'ball_settled'
+      });
+      
+      gameState.shotInProgress = false;
+    }
 
     // Reset shot tracking state
     gameState.shotInProgress = false;
