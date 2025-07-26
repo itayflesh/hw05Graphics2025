@@ -982,7 +982,7 @@ const physicsState = {
   debugMode: false
 };
 
-// Enhanced CollisionDetector class with rim collision detection
+// Enhanced CollisionDetector class with proper backboard collision detection
 class CollisionDetector {
   constructor() {
     this.ballRadius = gameState.basketball.radius;
@@ -1001,6 +1001,26 @@ class CollisionDetector {
         position: { x: 13.7, y: 4.5, z: 0 }, 
         radius: 0.23,
         thickness: 0.02 
+      }
+    ];
+    
+    // NEW: Backboard collision configuration
+    this.backboards = [
+      {
+        id: 'left',
+        position: { x: -14, y: 5, z: 0 }, // Position in front of support structure
+        width: 2.8,  // Backboard width
+        height: 1.6, // Backboard height
+        thickness: 0.1, // Backboard thickness
+        normal: { x: 1, y: 0, z: 0 } // Points toward center court
+      },
+      {
+        id: 'right',
+        position: { x: 14, y: 5, z: 0 }, // Position in front of support structure
+        width: 2.8,
+        height: 1.6,
+        thickness: 0.1,
+        normal: { x: -1, y: 0, z: 0 } // Points toward center court
       }
     ];
   }
@@ -1053,7 +1073,85 @@ class CollisionDetector {
     return collision;
   }
   
-  // NEW: Check collision with basketball rims
+  // NEW: Check collision with basketball backboards
+  checkBackboardCollision(position, velocity) {
+    const collisions = [];
+    
+    for (const backboard of this.backboards) {
+      const collision = this.checkSingleBackboardCollision(position, velocity, backboard);
+      if (collision.isColliding) {
+        collisions.push({ type: 'backboard', backboard: backboard.id, ...collision });
+      }
+    }
+    
+    return collisions;
+  }
+  
+  checkSingleBackboardCollision(ballPosition, ballVelocity, backboard) {
+    const collision = {
+      isColliding: false,
+      normal: { x: 0, y: 0, z: 0 },
+      penetration: 0,
+      point: { x: 0, y: 0, z: 0 }
+    };
+    
+    const bbPos = backboard.position;
+    const bbWidth = backboard.width;
+    const bbHeight = backboard.height;
+    const bbThickness = backboard.thickness;
+    const ballRadius = this.ballRadius;
+    
+    // Check if ball is in the correct range for this backboard
+    const verticalRange = Math.abs(ballPosition.y - bbPos.y) <= (bbHeight / 2 + ballRadius);
+    const horizontalRange = Math.abs(ballPosition.z - bbPos.z) <= (bbWidth / 2 + ballRadius);
+    
+    if (!verticalRange || !horizontalRange) {
+      return collision; // Ball is not in range of this backboard
+    }
+    
+    // Calculate distance from ball to backboard surface
+    let distanceToSurface;
+    let surfacePoint = { x: bbPos.x, y: bbPos.y, z: bbPos.z };
+    
+    if (backboard.id === 'left') {
+      // Left backboard - check collision from the right side (center court side)
+      distanceToSurface = (bbPos.x + bbThickness / 2) - ballPosition.x;
+      surfacePoint.x = bbPos.x + bbThickness / 2;
+    } else {
+      // Right backboard - check collision from the left side (center court side)  
+      distanceToSurface = ballPosition.x - (bbPos.x - bbThickness / 2);
+      surfacePoint.x = bbPos.x - bbThickness / 2;
+    }
+    
+    // Check if ball is penetrating the backboard
+    if (distanceToSurface <= ballRadius && distanceToSurface > -bbThickness) {
+      // Ensure ball is within the backboard boundaries
+      const withinVerticalBounds = ballPosition.y >= (bbPos.y - bbHeight / 2) && 
+                                   ballPosition.y <= (bbPos.y + bbHeight / 2);
+      const withinHorizontalBounds = ballPosition.z >= (bbPos.z - bbWidth / 2) && 
+                                     ballPosition.z <= (bbPos.z + bbWidth / 2);
+      
+      if (withinVerticalBounds && withinHorizontalBounds) {
+        collision.isColliding = true;
+        collision.normal = { ...backboard.normal };
+        collision.penetration = ballRadius - distanceToSurface;
+        collision.point = { ...surfacePoint };
+        
+        // Clamp the collision point to the backboard surface
+        collision.point.y = Math.max(bbPos.y - bbHeight / 2, 
+                                    Math.min(bbPos.y + bbHeight / 2, ballPosition.y));
+        collision.point.z = Math.max(bbPos.z - bbWidth / 2, 
+                                    Math.min(bbPos.z + bbWidth / 2, ballPosition.z));
+        
+        console.log(`Backboard collision detected with ${backboard.id} backboard!`);
+        console.log(`Penetration: ${collision.penetration.toFixed(3)}, Distance: ${distanceToSurface.toFixed(3)}`);
+      }
+    }
+    
+    return collision;
+  }
+  
+  // Check collision with basketball rims (existing code - keeping for completeness)
   checkRimCollision(position, velocity) {
     const collisions = [];
     
@@ -1160,6 +1258,10 @@ class CollisionDetector {
     if (boundaryCollision.isColliding) {
       collisions.push({ type: 'boundary', ...boundaryCollision });
     }
+    
+    // NEW: Check backboard collisions
+    const backboardCollisions = this.checkBackboardCollision(position, velocity);
+    collisions.push(...backboardCollisions);
     
     // Check rim collisions
     const rimCollisions = this.checkRimCollision(position, velocity);
@@ -1281,6 +1383,7 @@ class HoopDetector {
   }
 }
 
+// Enhanced BasketballPhysicsEngine with proper backboard collision handling
 class BasketballPhysicsEngine {
   constructor() {
     this.collisionDetector = new CollisionDetector();
@@ -1359,11 +1462,14 @@ class BasketballPhysicsEngine {
     const ball = gameState.basketball;
     const { normal, penetration, type } = collision;
     
+    console.log(`Resolving collision: ${type}, penetration: ${penetration?.toFixed(3)}`);
+    
     // Position correction to prevent object interpenetration
     if (penetration > 0) {
       ball.position.x += normal.x * penetration;
       ball.position.y += normal.y * penetration;
       ball.position.z += normal.z * penetration;
+      console.log(`Position corrected by: (${(normal.x * penetration).toFixed(3)}, ${(normal.y * penetration).toFixed(3)}, ${(normal.z * penetration).toFixed(3)})`);
     }
     
     // Calculate velocity component along collision normal
@@ -1371,8 +1477,13 @@ class BasketballPhysicsEngine {
                       ball.velocity.y * normal.y + 
                       ball.velocity.z * normal.z;
     
+    console.log(`Velocity dot product with normal: ${dotProduct.toFixed(3)}`);
+    
     // Only resolve if objects are moving toward each other
     if (dotProduct < 0) {
+      // Store original velocity for debugging
+      const originalVelocity = { ...ball.velocity };
+      
       // Reflect velocity along the normal
       ball.velocity.x -= 2 * dotProduct * normal.x;
       ball.velocity.y -= 2 * dotProduct * normal.y;
@@ -1402,6 +1513,30 @@ class BasketballPhysicsEngine {
           }
         }
       } 
+      else if (type === 'backboard') {
+        // NEW: Special handling for backboard collisions
+        damping = 0.8; // Moderate energy loss when hitting backboard
+        
+        // Ensure proper reflection off backboard
+        console.log(`Backboard collision with ${collision.backboard} backboard`);
+        console.log(`Normal: (${normal.x.toFixed(3)}, ${normal.y.toFixed(3)}, ${normal.z.toFixed(3)})`);
+        console.log(`Original velocity: (${originalVelocity.x.toFixed(3)}, ${originalVelocity.y.toFixed(3)}, ${originalVelocity.z.toFixed(3)})`);
+        console.log(`Reflected velocity: (${ball.velocity.x.toFixed(3)}, ${ball.velocity.y.toFixed(3)}, ${ball.velocity.z.toFixed(3)})`);
+        
+        // Add slight randomization to make backboard bounces more realistic
+        const randomFactor = 0.05;
+        ball.velocity.y += (Math.random() - 0.5) * randomFactor;
+        ball.velocity.z += (Math.random() - 0.5) * randomFactor;
+        
+        // Ensure ball bounces away from backboard (additional safety check)
+        if (collision.backboard === 'left' && ball.velocity.x < 0) {
+          ball.velocity.x = Math.abs(ball.velocity.x);
+          console.log('Corrected velocity direction for left backboard');
+        } else if (collision.backboard === 'right' && ball.velocity.x > 0) {
+          ball.velocity.x = -Math.abs(ball.velocity.x);
+          console.log('Corrected velocity direction for right backboard');
+        }
+      }
       else if (type === 'rim') {
         // Special handling for rim collisions
         damping = 0.6; // More energy loss when hitting the rim
@@ -1421,6 +1556,10 @@ class BasketballPhysicsEngine {
       ball.velocity.x *= damping;
       ball.velocity.y *= damping;
       ball.velocity.z *= damping;
+      
+      console.log(`Final velocity after damping (${damping}): (${ball.velocity.x.toFixed(3)}, ${ball.velocity.y.toFixed(3)}, ${ball.velocity.z.toFixed(3)})`);
+    } else {
+      console.log('No collision resolution needed - objects moving away from each other');
     }
   }
   
@@ -1441,6 +1580,21 @@ class BasketballPhysicsEngine {
       basketballGroup.rotation.z = ball.rotation.z;
       basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
     }
+  }
+  
+  // NEW: Debug method to test backboard collision
+  testBackboardCollision() {
+    console.log('Testing backboard collision...');
+    
+    // Position ball near left backboard
+    gameState.basketball.position = { x: -13.5, y: 5, z: 0 };
+    gameState.basketball.targetPosition = { ...gameState.basketball.position };
+    
+    // Give it velocity toward the backboard
+    const testVelocity = { x: -5, y: 0, z: 0 };
+    this.startPhysics(testVelocity);
+    
+    console.log('Backboard collision test started');
   }
   
   update(deltaTime) {
@@ -1464,6 +1618,9 @@ class BasketballPhysicsEngine {
     }
     
     const collisions = this.collisionDetector.checkAllCollisions(ball.position, ball.velocity);
+    if (collisions.length > 0) {
+      console.log(`Found ${collisions.length} collision(s):`, collisions.map(c => c.type));
+    }
     this.handleCollisions(collisions);
     this.updateRotationFromVelocity(deltaTime);
   }
