@@ -544,7 +544,9 @@ const gameState = {
     maxY: 15.0
   },
   deltaTime: 0,
-  lastTime: 0
+  lastTime: 0,
+  currentShotScored: false, // Track if current shot scored
+  shotInProgress: false     // Track if a shot is currently in flight
 };
 
 // Input state tracking
@@ -619,6 +621,9 @@ class ScoringSystem {
     
     // Update score
     gameState.score += points;
+    
+    // Mark that this shot scored
+    gameState.currentShotScored = true;
     
     // Update best streak
     if (gameState.consecutiveShots > gameState.bestStreak) {
@@ -1412,6 +1417,10 @@ class BasketballPhysicsEngine {
     ball.isOnGround = true;
     physicsState.isPhysicsActive = false;
     this.isActive = false;
+
+    // Reset shot tracking state
+    gameState.shotInProgress = false;
+    // Don't reset currentShotScored here - let it persist until next shot
     
     console.log('Physics simulation stopped');
   }
@@ -1463,7 +1472,32 @@ class BasketballPhysicsEngine {
     const { normal, penetration, type } = collision;
     
     console.log(`Resolving collision: ${type}, penetration: ${penetration?.toFixed(3)}`);
-    
+
+     // NEW: Handle boundary collision with reset logic
+    if (type === 'boundary') {
+      // If ball is in flight and hasn't scored yet, reset instead of bouncing
+      if (gameState.shotInProgress && !gameState.currentShotScored) {
+        console.log('Ball went out of bounds during shot - resetting to center');
+        
+        // Reset shot state
+        gameState.shotInProgress = false;
+        gameState.currentShotScored = false;
+        
+        // Silently reset basketball (like pressing R but without message)
+        this.stopPhysics();
+        basketballStateManager.resetToCenter();
+        
+        // Process as missed shot for statistics
+        scoringSystem.processMissedShot({
+          distance: 0,
+          reason: 'out_of_bounds'
+        });
+        
+        return; // Don't process normal collision
+      }
+      // If ball already scored or not in shot mode, use normal boundary collision
+    }
+
     // Position correction to prevent object interpenetration
     if (penetration > 0) {
       ball.position.x += normal.x * penetration;
@@ -1749,6 +1783,11 @@ function processInput() {
     inputState.spacebar = false;
     
     if (!gameState.basketball.isInFlight) {
+      
+      /// Reset scoring state for new shot
+      gameState.currentShotScored = false;
+      gameState.shotInProgress = true;
+
       // Increment shot attempts first
       gameState.shotAttempts++;
       
@@ -1763,13 +1802,16 @@ function processInput() {
       
       // Start checking for missed shots after a delay
       setTimeout(() => {
-        if (!gameState.basketball.isInFlight && gameState.lastShotResult !== 'made') {
+        if (!gameState.basketball.isInFlight && 
+            gameState.shotInProgress && 
+            !gameState.currentShotScored) {
           // Shot missed - ball has settled without scoring
           scoringSystem.processMissedShot({
             distance: nearestHoop.distance
           });
+          gameState.shotInProgress = false;
         }
-      }, 5000); // Check after 5 seconds
+      }, 5000);
       
       scoringSystem.updateUI();
     }
