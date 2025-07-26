@@ -22,14 +22,10 @@
 **W / S Keys - Adjust Shot Power**
 - W: Increase shot power (stronger shot)
 - S: Decrease shot power (weaker shot)
-- Visual indicator showing current power level
-- Power range: 0% to 100%
 
 **Spacebar - Shoot Basketball:**
 - Launch ball toward nearest hoop
 - Use current power level for initial velocity
-- Calculate trajectory to reach hoop
-- Apply physics simulation after launch
 
 **R Key - Reset Basketball:**
 - Return ball to center court position
@@ -39,7 +35,6 @@
 
 **O Key - Toggle Camera:**
 - Enable/disable orbit camera controls
-- (Inherited from HW05)
 
 ## Additional Features Implemented
 - Realistic basketball court wood texture
