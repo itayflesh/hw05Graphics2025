@@ -982,10 +982,27 @@ const physicsState = {
   debugMode: false
 };
 
+// Enhanced CollisionDetector class with rim collision detection
 class CollisionDetector {
   constructor() {
     this.ballRadius = gameState.basketball.radius;
     this.courtBounds = gameState.courtBounds;
+    
+    // Rim collision configuration
+    this.rims = [
+      { 
+        id: 'left', 
+        position: { x: -13.7, y: 4.5, z: 0 }, 
+        radius: 0.23,
+        thickness: 0.02 
+      },
+      { 
+        id: 'right', 
+        position: { x: 13.7, y: 4.5, z: 0 }, 
+        radius: 0.23,
+        thickness: 0.02 
+      }
+    ];
   }
   
   checkGroundCollision(position, velocity) {
@@ -1036,18 +1053,117 @@ class CollisionDetector {
     return collision;
   }
   
+  // NEW: Check collision with basketball rims
+  checkRimCollision(position, velocity) {
+    const collisions = [];
+    
+    for (const rim of this.rims) {
+      const collision = this.checkSingleRimCollision(position, velocity, rim);
+      if (collision.isColliding) {
+        collisions.push({ type: 'rim', rim: rim.id, ...collision });
+      }
+    }
+    
+    return collisions;
+  }
+  
+  checkSingleRimCollision(ballPosition, ballVelocity, rim) {
+    const collision = {
+      isColliding: false,
+      normal: { x: 0, y: 0, z: 0 },
+      penetration: 0,
+      point: { x: 0, y: 0, z: 0 }
+    };
+    
+    const rimPos = rim.position;
+    const rimRadius = rim.radius;
+    const rimThickness = rim.thickness;
+    const ballRadius = this.ballRadius;
+    
+    // Calculate distance from ball center to rim center (2D in XZ plane)
+    const dx = ballPosition.x - rimPos.x;
+    const dz = ballPosition.z - rimPos.z;
+    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+    
+    // Check if ball is in the right height range for rim collision
+    const heightDiff = Math.abs(ballPosition.y - rimPos.y);
+    const maxHeightForCollision = ballRadius + rimThickness;
+    
+    if (heightDiff > maxHeightForCollision) {
+      return collision; // Too far above or below rim
+    }
+    
+    // Check for collision with the rim torus
+    // Distance from ball center to the rim torus center line
+    const distanceToRimCenter = Math.abs(horizontalDistance - rimRadius);
+    const totalCollisionDistance = ballRadius + rimThickness;
+    
+    if (distanceToRimCenter <= totalCollisionDistance && heightDiff <= rimThickness + ballRadius) {
+      collision.isColliding = true;
+      
+      // Calculate collision normal
+      if (horizontalDistance < rimRadius) {
+        // Ball is inside the rim - push outward
+        if (horizontalDistance > 0.001) {
+          collision.normal.x = -dx / horizontalDistance;
+          collision.normal.z = -dz / horizontalDistance;
+        } else {
+          // Ball is exactly at center, push in arbitrary direction
+          collision.normal.x = 1;
+          collision.normal.z = 0;
+        }
+        collision.penetration = ballRadius - (rimRadius - horizontalDistance);
+      } else {
+        // Ball is outside the rim - collision with outer edge
+        collision.normal.x = dx / horizontalDistance;
+        collision.normal.z = dz / horizontalDistance;
+        collision.penetration = ballRadius + rimThickness - (horizontalDistance - rimRadius);
+      }
+      
+      // Add vertical component if ball hits top or bottom of rim
+      if (ballPosition.y > rimPos.y + rimThickness / 2) {
+        collision.normal.y = 0.3; // Slight upward bounce
+      } else if (ballPosition.y < rimPos.y - rimThickness / 2) {
+        collision.normal.y = -0.3; // Slight downward push
+      }
+      
+      // Normalize the collision normal
+      const normalLength = Math.sqrt(
+        collision.normal.x * collision.normal.x +
+        collision.normal.y * collision.normal.y +
+        collision.normal.z * collision.normal.z
+      );
+      
+      if (normalLength > 0.001) {
+        collision.normal.x /= normalLength;
+        collision.normal.y /= normalLength;
+        collision.normal.z /= normalLength;
+      }
+      
+      console.log(`Rim collision detected with ${rim.id} rim!`);
+    }
+    
+    return collision;
+  }
+  
   checkAllCollisions(position, velocity) {
     const collisions = [];
     
+    // Check ground collision
     const groundCollision = this.checkGroundCollision(position, velocity);
     if (groundCollision.isColliding) {
       collisions.push({ type: 'ground', ...groundCollision });
     }
     
+    // Check boundary collision
     const boundaryCollision = this.checkBoundaryCollision(position, velocity);
     if (boundaryCollision.isColliding) {
       collisions.push({ type: 'boundary', ...boundaryCollision });
     }
+    
+    // Check rim collisions
+    const rimCollisions = this.checkRimCollision(position, velocity);
+    collisions.push(...rimCollisions);
     
     return collisions;
   }
@@ -1127,24 +1243,29 @@ class HoopDetector {
       distance: 0
     };
     
+    // Only check for scoring if ball is moving downward
     if (ballVelocity.y >= 0) return scoreResult;
     
     for (const hoop of this.hoops) {
       const rimPos = hoop.position;
       
+      // Distance from rim center (2D)
       const distanceToRim = Math.sqrt(
         Math.pow(ballPosition.x - rimPos.x, 2) + 
         Math.pow(ballPosition.z - rimPos.z, 2)
       );
       
-      if (distanceToRim <= PHYSICS_CONFIG.rimRadius + PHYSICS_CONFIG.rimTolerance) {
+      // Check if ball is within scoring area (smaller than collision area)
+      const scoreRadius = PHYSICS_CONFIG.rimRadius * 0.8; // Smaller radius for scoring
+      
+      if (distanceToRim <= scoreRadius) {
         const crossedRimHeight = ballPrevPosition.y > rimPos.y && ballPosition.y <= rimPos.y;
         const validHeight = ballPosition.y >= PHYSICS_CONFIG.scoreHeight;
         
         if (crossedRimHeight && validHeight) {
           scoreResult.scored = true;
           scoreResult.hoop = hoop;
-          scoreResult.type = distanceToRim <= PHYSICS_CONFIG.rimRadius * 0.7 ? 'swish' : 'score';
+          scoreResult.type = distanceToRim <= scoreRadius * 0.7 ? 'swish' : 'score';
           scoreResult.distance = Math.sqrt(
             Math.pow(rimPos.x - gameState.basketball.previousPosition.x, 2) +
             Math.pow(rimPos.z - gameState.basketball.previousPosition.z, 2)
@@ -1238,26 +1359,32 @@ class BasketballPhysicsEngine {
     const ball = gameState.basketball;
     const { normal, penetration, type } = collision;
     
+    // Position correction to prevent object interpenetration
     if (penetration > 0) {
       ball.position.x += normal.x * penetration;
       ball.position.y += normal.y * penetration;
       ball.position.z += normal.z * penetration;
     }
     
+    // Calculate velocity component along collision normal
     const dotProduct = ball.velocity.x * normal.x + 
                       ball.velocity.y * normal.y + 
                       ball.velocity.z * normal.z;
     
+    // Only resolve if objects are moving toward each other
     if (dotProduct < 0) {
+      // Reflect velocity along the normal
       ball.velocity.x -= 2 * dotProduct * normal.x;
       ball.velocity.y -= 2 * dotProduct * normal.y;
       ball.velocity.z -= 2 * dotProduct * normal.z;
       
+      // Apply different damping based on collision type
       let damping = PHYSICS_CONFIG.bounceDamping;
       
       if (type === 'ground') {
         damping = PHYSICS_CONFIG.bounceDamping * 0.8;
         
+        // Handle ground settling
         if (Math.abs(ball.velocity.y) < PHYSICS_CONFIG.minBounceVelocity) {
           ball.velocity.y = 0;
           ball.position.y = physicsState.groundLevel;
@@ -1274,8 +1401,23 @@ class BasketballPhysicsEngine {
             return;
           }
         }
+      } 
+      else if (type === 'rim') {
+        // Special handling for rim collisions
+        damping = 0.6; // More energy loss when hitting the rim
+        
+        // Add some randomization to rim bounces for realism
+        const randomFactor = 0.1;
+        ball.velocity.x += (Math.random() - 0.5) * randomFactor;
+        ball.velocity.z += (Math.random() - 0.5) * randomFactor;
+        
+        console.log(`Ball bounced off ${collision.rim} rim with damping ${damping}`);
+      }
+      else if (type === 'boundary') {
+        damping = 0.7; // Court boundary bounces
       }
       
+      // Apply damping to all velocity components
       ball.velocity.x *= damping;
       ball.velocity.y *= damping;
       ball.velocity.z *= damping;
