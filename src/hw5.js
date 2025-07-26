@@ -1385,7 +1385,7 @@ class HoopDetector {
         if (crossedRimHeight && validHeight) {
           scoreResult.scored = true;
           scoreResult.hoop = hoop;
-          scoreResult.type = distanceToRim <= scoreRadius * 0.7 ? 'swish' : 'score';
+          scoreResult.type = distanceToRim <= scoreRadius * 0.95 ? 'swish' : 'score';
           scoreResult.distance = Math.sqrt(
             Math.pow(rimPos.x - gameState.basketball.previousPosition.x, 2) +
             Math.pow(rimPos.z - gameState.basketball.previousPosition.z, 2)
