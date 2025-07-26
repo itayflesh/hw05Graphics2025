@@ -1628,7 +1628,7 @@ class BasketballPhysicsEngine {
     if (!physicsState.isPhysicsActive) return;
     
     const ball = gameState.basketball;
-    const rotationFactor = 0.05;
+    const rotationFactor = 1.0;
     
     ball.rotationVelocity.x = -ball.velocity.z * rotationFactor;
     ball.rotationVelocity.z = ball.velocity.x * rotationFactor;
@@ -1855,7 +1855,7 @@ function updateBasketballRotation(input) {
   if (!basketballGroup) return;
   
   const ball = gameState.basketball;
-  const rotationSpeed = 0.1;
+  const rotationSpeed = 3.0;
   
   if (input.arrowLeft) {
     ball.rotation.z -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
@@ -1869,10 +1869,12 @@ function updateBasketballRotation(input) {
   if (input.arrowDown) {
     ball.rotation.x -= rotationSpeed * gameState.deltaTime * ball.movementSpeed;
   }
+  ball.rotation.y += rotationSpeed * gameState.deltaTime * 0.5;
   
   basketballGroup.rotation.x = ball.rotation.x;
   basketballGroup.rotation.z = ball.rotation.z;
   basketballGroup.rotation.y = Math.PI / 6 + ball.rotation.y;
+
 }
 
 function resetBasketball() {
