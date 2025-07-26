@@ -693,7 +693,7 @@ class ScoringSystem {
       
     } else {
       statusElement.classList.add('shot-missed');
-      statusElement.innerHTML = `❌ MISSED SHOT<br><small>Keep trying!</small>`;
+      statusElement.innerHTML = `❌ MISSED SHOT<br><small> Keep trying!</small>`;
     }
     
     // Auto-hide after 3 seconds
@@ -1472,6 +1472,31 @@ class BasketballPhysicsEngine {
     const { normal, penetration, type } = collision;
     
     console.log(`Resolving collision: ${type}, penetration: ${penetration?.toFixed(3)}`);
+
+    // NEW: Handle boundary collision with reset logic
+    if (type === 'boundary') {
+      // If ball is in flight and hasn't scored yet, reset instead of bouncing
+      if (gameState.shotInProgress && !gameState.currentShotScored) {
+        console.log('Ball went out of bounds during shot - resetting to center');
+        
+        // Reset shot state
+        gameState.shotInProgress = false;
+        gameState.currentShotScored = false;
+        
+        // Silently reset basketball (like pressing R but without message)
+        this.stopPhysics();
+        basketballStateManager.resetToCenter();
+        
+        // Process as missed shot for statistics
+        scoringSystem.processMissedShot({
+          distance: 0,
+          reason: 'out_of_bounds'
+        });
+        
+        return; // Don't process normal collision
+      }
+      // If ball already scored or not in shot mode, use normal boundary collision
+    }
 
     // Position correction to prevent object interpenetration
     if (penetration > 0) {
