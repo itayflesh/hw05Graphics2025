@@ -93,7 +93,7 @@ Our physics engine implements comprehensive collision detection for multiple obj
 - None currently identified
 
 ## Gameplay Video
-[gameplay demonstration video\]](https://www.canva.com/design/DAGuSH3tOPg/Ra7FLqVgikSOBfFqZvVk9w/watch?utm_content=DAGuSH3tOPg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=ha347ce5ca8)
+[gameplay demonstration video](https://www.canva.com/design/DAGuSH3tOPg/Ra7FLqVgikSOBfFqZvVk9w/watch?utm_content=DAGuSH3tOPg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=ha347ce5ca8)
 
 ## Sources of External Assets
 - Basketball court wood texture
